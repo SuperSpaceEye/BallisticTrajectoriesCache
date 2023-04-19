@@ -1,8 +1,8 @@
 import pickle
-from make_data import make_data
+from make_data.interpolate_data import transform_data
+from prepare_data import prepare_data
 
 max_str_length = int(0.5*1024*1024)
-
 
 def make_line(line_data, rounding=2):
     str_line = "{"
@@ -13,7 +13,7 @@ def make_line(line_data, rounding=2):
 
 
 with open("data", mode="rb") as file:
-    data = make_data(pickle.load(file))
+    data = prepare_data(transform_data(pickle.load(file)))
 with open("shard.lua", mode="r") as file:
     shard_str = file.read()
 with open("dispatcher.lua", mode="r") as file:
@@ -68,8 +68,8 @@ for item in boundaries:
 
 
 for i, program in enumerate(shard_programs):
-    with open(f"shards/shard_{i+1}.lua", mode="w") as file:
+    with open(f"compiled/shard_{i + 1}.lua", mode="w") as file:
         file.write(program)
 
-with open("shards/dispatcher.lua", mode="w") as file:
+with open("compiled/dispatcher.lua", mode="w") as file:
     file.write(dispatcher_str)
