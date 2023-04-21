@@ -3,7 +3,7 @@ import pickle
 import interpolate_data
 import math
 
-with open("../data2", mode="rb") as file:
+with open("../data", mode="rb") as file:
     data = pickle.load(file)
 
 data = interpolate_data.transform_data(data)
