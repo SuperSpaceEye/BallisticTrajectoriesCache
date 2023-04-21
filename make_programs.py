@@ -21,7 +21,10 @@ with open("dispatcher.lua", mode="r") as file:
 
 lines = {}
 
-for key in data:
+sorted_keys = list(data.keys())
+sorted_keys.sort()
+
+for key in sorted_keys:
     item = data[key]
     line = make_line(item)
     lines[key] = line
@@ -33,7 +36,6 @@ displacement = abs(list(lines.keys())[0])+1
 
 min_y = list(lines.keys())[0]
 boundaries = []
-
 
 def make_shard(key):
     global min_y, new_shard, shard_data, displacement, boundaries
@@ -49,8 +51,7 @@ def make_shard(key):
  
     displacement = -key + 1
 
-
-for key in lines:
+for key in sorted_keys:
     line = lines[key]
 
     if len(new_shard) + len(shard_data) + len(line) > max_str_length:
