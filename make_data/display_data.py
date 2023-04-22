@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import pickle
 import interpolate_data
-import math
 
 with open("../data", mode="rb") as file:
     data = pickle.load(file)
@@ -18,14 +17,11 @@ airtime = []
 for key in data:
     line = data[key]
     for item in line:
-        # if item[1][0] > 5:
-        #     continue
-
         x_axis.append(item[0][0])
         y_axis.append(item[0][1])
 
-        # delta_t.append(item[1][0])
-        delta_t.append(math.log(item[1][0], 2))
+        delta_t.append(item[1][0])
+        # delta_t.append(math.log(item[1][0], 2))
         pitch.append(item[1][1])
         airtime.append(item[1][2])
 
