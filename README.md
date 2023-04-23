@@ -1,7 +1,18 @@
 # WIP BallisticTrajectoriesCache
 
 ## What is it
-This project allows getting needed pitch for [Create Big Cannons](https://www.curseforge.com/minecraft/mc-mods/create-big-cannons) in a constant time by precalculating every possible position that a cannon with given characteristics can hit. The result of these calculations then transformed into a lookup table divided between several data shards with lua programs for [cc: tweaked](https://www.curseforge.com/minecraft/mc-mods/cc-tweaked) that work with it.
+This project allows getting needed pitch for [Create Big Cannons](https://www.curseforge.com/minecraft/mc-mods/create-big-cannons) in a constant time by precalculating every possible position that a cannon with given characteristics can hit. The result of these calculations then transformed into a lookup table divided between several data shards with lua programs for [cc: tweaked](https://www.curseforge.com/minecraft/mc-mods/cc-tweaked).
+
+## Before you begin
+1. Install requirements.txt
+
+Either:
+2. Install c++ compiler that supports at least c++17
+3. Install pybind11 for c++ https://github.com/pybind/pybind11
+4. In make_data run "python startup.py install" (It will compile and install it as a python package. if you don't want it, run "pip uninstall CannonBallisticFunctions" after finishing working with it. I will probably make it a pip package at some point.)
+
+Or:
+2. Don't do anything and just use python implementation of make_dataset. It will generate data significantly slower, like 100x or so.
 
 ## How to compile programs
 0. 1. Install requirements.txt
