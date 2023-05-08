@@ -14,8 +14,7 @@ std::vector<T> linspace(double start, double end, int num) {
     linspaced.reserve(num);
 
     if (num == 0) { return linspaced; }
-    if (num == 1)
-    {
+    if (num == 1) {
         linspaced.template emplace_back(start);
         return linspaced;
     }
@@ -30,8 +29,7 @@ std::vector<T> linspace(double start, double end, int num) {
 
     double delta = (end - start) / (num - 1);
 
-    for (int i = 0; i < num-1; ++i)
-    {
+    for (int i = 0; i < num-1; ++i) {
         linspaced.template emplace_back(T(start + delta * i) - displacement);
     }
     end -= displacement;

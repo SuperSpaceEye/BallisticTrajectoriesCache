@@ -1,3 +1,7 @@
+# @sashafiesta#1978 (Discord) : Original formulas and principles.
+# @Malex#6461: Python adaptation, some changes and improvements on the original formulas. https://github.com/Malex21/CreateBigCannons-BallisticCalculator
+# @SpaceEye#2191: Optimized even more.
+
 from math import sin, cos, atan, sqrt, pi, radians, log
 from numpy import linspace
 
@@ -11,10 +15,6 @@ def time_in_air(y0, y, Vy, max_steps=100000):
         y0 (float): y coordinate of the projectile
         y (float): y coordinate of the target
         Vy (float): vertical velocity of the projectile
-
-    Returns:
-        int: Airtime of projectile in ticks / "Error" if timeout
-        :param max_steps:
     """
     t = 0
     t_below = 999_999_999_999
@@ -51,9 +51,8 @@ def time_in_air(y0, y, Vy, max_steps=100000):
 def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance, cannon, target, delta_t_max_overshoot=1,
                             max_steps=100000):
     # Bias that the cannon is probably gonna aim up instead of down
-    # No use for now, useful for a later optimisation
 
-    tp_rad = radians(tried_pitch)  # cuz triedPitch is in degrees
+    tp_rad = radians(tried_pitch)
 
     Vw = cos(tp_rad) * initial_speed
     Vy = sin(tp_rad) * initial_speed
@@ -78,20 +77,11 @@ def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance, cannon
     if t_above < 0: return None, False
     if t_above < horizontal_time_to_target - delta_t_max_overshoot: return None, False
 
+    # if target is above cannon it may hit it on ascension
     delta_t = min(
         abs(horizontal_time_to_target - t_below),
         abs(horizontal_time_to_target - t_above)
     )
-    # We calculate the difference between the time to target and airtime of the shell
-    # The way this whole thing works is by comparing those values
-    # We try to find the angle that corresponds the most to the timeToTarget
-
-    """
-    TimeToTarget is the time it takes for the shell to reach the target on the horizontal plane
-    timeAir is the time it takes for the shell to reach the target depending on the given angle
-    We try to find the airTime that corresponds the most to TimeToTarget, by taking the difference of TimeToTarget
-    by every airTime possible (Bruteforcing every angle between -30 and 60 degrees)
-    """
 
     return (delta_t, tried_pitch, delta_t + horizontal_time_to_target), True
 
@@ -154,7 +144,7 @@ def BallisticsToTarget(cannon, target, power, direction, R1, R2, length):
         direction (str): Direction of the cannon (East, West...)
         R1 (int): Rotation speed of the yaw shaft
         R2 (int): Rotation speed of the pitch shaft
-        length (int): Lenght of the cannon from mount to tip
+        length (int): Length of the cannon from mount to tip
 
     Returns:
         tuple: The yaw, pitch required and predicted airtime of the projectile
@@ -182,66 +172,3 @@ def BallisticsToTarget(cannon, target, power, direction, R1, R2, length):
         pitchTime,
         fuzeTime,
     )
-
-
-# print("For the cannon coordinates, please input the coordinates of the cannon mount.")
-# cannonCoord = (
-#     float(input("x coord of cannon : ")),
-#     float(input("y coord of cannon : ")) + 2,
-#     float(input("z coord of cannon : ")),
-# )
-# targetCoord = (
-#     float(input("x coord of target : ")),
-#     float(input("y coord of target : ")),
-#     float(input("z coord of target : ")),
-# )
-#
-# powderCharges = int(input("Number of powder charges (int) : "))
-#
-# directionOfCannon = input(
-#     "What is the standart direction of the cannon ? (north, south, east, west) "
-# )
-#
-# yawRPM = float(input("What is the RPM of the yaw axis ? "))
-# pitchRPM = float(input("What is the RPM of the pitch axis ? "))
-#
-# cannonLenght = int(
-#     input(
-#         "What is the lenght of the cannon ? (From the block held by the mount to the tip of the cannon, the held block excluded) "
-#     )
-# )
-#
-# ballistic = BallisticsToTarget(
-#     cannonCoord,
-#     targetCoord,
-#     powderCharges,
-#     directionOfCannon,
-#     yawRPM,
-#     pitchRPM,
-#     cannonLenght,
-# )
-
-# yawRPM = 4
-# pitchRPM = 4
-#
-# ballistic = BallisticsToTarget((0, 0, 0), (300, 0, 0), 7, "north", 4, 4, 4)
-#
-# if type(ballistic) is tuple:
-#     print(f"Yaw is {round(ballistic[0], 1)}")
-#     print(f"Pitch is {round(ballistic[1], 1)}")
-#     print(f"Airtime is {round(ballistic[2], 0)} ticks")
-#     print(
-#         f"With the yaw axis set at {yawRPM} rpm, the cannon must take {round(ballistic[3], 0)} ticks of turning the yaw axis."
-#     )
-#     print(
-#         f"With the pitch axis set at {pitchRPM} rpm, the cannon must take {round(ballistic[4], 0)} ticks of turning the pitch axis."
-#     )
-#     print(
-#         f"You must set the fuze time to {round(ballistic[5], 0)} ticks,\
-#         which is {round(ballistic[5], 0) // 20} seconds and {round(ballistic[5], 0) % 20} ticks."
-#     )
-# else:
-#     print(ballistic)
-
-# CREDITS OF ORIGINAL FORMULAS : @sashafiesta#1978 on Discord
-
