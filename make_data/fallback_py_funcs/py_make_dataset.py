@@ -10,7 +10,8 @@ def calculate_y_line(dataset, y, charges, barrel_length, points_simulated, y_don
     cutoff_count = 0
     x = barrel_length
     while x < max_length:
-        res = calculate_pitch((0, 0, 0), (x, y, 0), charges, barrel_length, -x, 0, max_simulation_steps, delta_t_max_overshoot)
+        res1, res2 = calculate_pitch((0, 0, 0), (x, y, 0), charges, barrel_length, -x, 0, max_simulation_steps, delta_t_max_overshoot)
+        res = res1 if res1[0] < res2[0] else res2
         if res[0] >= 0:
             dataset.append(((x, y, 0), res))
             had_result = True

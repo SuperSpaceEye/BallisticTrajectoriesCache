@@ -5,6 +5,27 @@
 from math import sin, cos, atan, sqrt, pi, radians, log
 from numpy import linspace
 
+
+#filter linspace
+def flinspace(start, stop, num_elements, min, max):
+    items = []
+    for item in linspace(start, stop, num_elements):
+        if item < min or item > max: continue
+        items.append(item)
+    return items
+
+
+def get_root(tab, from_end):
+    if from_end:
+        for i in reversed(range(0, len(tab) - 1)):
+            if tab[i][0] > tab[i + 1][0]: return tab[i + 1]
+        return tab[0]
+    else:
+        for i in range(1, len(tab)):
+            if tab[i - 1][0] < tab[i][0]: return tab[i - 1]
+        return tab[-1]
+
+
 def time_in_air(y0, y, Vy, max_steps=100000):
     """Find the air time of the projectile, using recursive sequence.
     It gives time in air by comparing the y-coordinate of the shell to the targets.
@@ -86,40 +107,54 @@ def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance, cannon
     return (delta_t, tried_pitch, delta_t + horizontal_time_to_target), True
 
 
-def calculate_pitch(cannon, target, power, length, Dx, Dz, max_steps=100000, delta_t_max_overshoot=1):
+def try_pitches(iter, *args):
+    delta_times = []
+    for try_pitch in iter:
+        items, is_successful = calculate_if_pitch_hits(try_pitch, *args)
+        if not is_successful: continue
+        delta_times.append(items)
+    return delta_times
+
+def calculate_pitch(cannon, target, power, length,
+                    max_steps=100000, delta_t_max_overshoot=1,
+                    amin=-30, amax=60, num_iterations=5, num_elements=20,
+                    check_impossible=True):
+    Dx, Dz = cannon[0] - target[0], cannon[2] - target[2]
     distance = sqrt(Dx * Dx + Dz * Dz)
     # Horizontal distance between target and mount
 
-    pitch: float
-
-    deltaTimes = []
-    for triedPitch in range(60, -31, -1):
-        items, is_successful = calculate_if_pitch_hits(triedPitch, power, length, distance, cannon, target,
+    delta_times = try_pitches(range(amax, amin-1, -1), power, length, distance, cannon, target,
                                                        delta_t_max_overshoot, max_steps)
-        if not is_successful: continue
-        deltaTimes.append((items[0], items[1]))
+    if len(delta_times) == 0: return (-1, -1, -1), (-1, -1, -1)
 
-    if len(deltaTimes) == 0: return (-1, -1, -1)
+    dT1, p1, at1, dT2, p2, at2 = None, None, None, None, None, None
 
-    deltaTime, pitch = min(deltaTimes, key=lambda x: x[0])
-    # Gives the minimum value depending on deltaT, the difference between airtime and TimeToTarget
+    dT1, p1, _ = get_root(delta_times, False)
+    dT2, p2, _ = get_root(delta_times, True)
 
-    # We do the same thing, but near pitch, to get a more precise angle
+    c1 = True
+    c2 = not p1 == p2  # calculate second
+    same_res = p1 == p2  # if result is same
 
-    deltaTimes = []
-    for triedPitch in linspace(pitch - 1, pitch + 1, 20):
-        items, is_successful = calculate_if_pitch_hits(triedPitch, power, length, distance, cannon, target,
-                                                       delta_t_max_overshoot, max_steps)
-        if not is_successful: continue
-        deltaTimes.append(items)
+    for i in range(0, num_iterations):
+        if c1: dTs1 = try_pitches(flinspace(p1 - 10**(-i), p1 + 10**(-i), num_elements, amin, amax), power, length, distance, cannon, target, delta_t_max_overshoot, max_steps)
+        if c2: dTs2 = try_pitches(flinspace(p2 - 10**(-i), p2 + 10**(-i), num_elements, amin, amax), power, length, distance, cannon, target, delta_t_max_overshoot, max_steps)
 
-    if len(deltaTimes) == 0: return (-1, -1, -1)
+        if c1 and len(dTs1) == 0: c1=False
+        if c2 and len(dTs2) == 0: c2=False
 
-    deltaTime, pitch, airtime = min(deltaTimes, key=lambda x: x[0])
+        if not c1 and not c2: return (-1, -1, -1), (-1, -1, -1)
 
-    if pitch > 60 or pitch < -30: return (-1, -1, -1)
+        if c1: dT1, p1, at1 = min(dTs1, key=lambda x: x[0])
+        if c2: dT2, p2, at2 = min(dTs2, key=lambda x: x[0])
 
-    return (deltaTime, pitch, airtime)
+    if same_res: dT2, p2, at2 = dT1, p1, at1
+
+    r1, r2 = (dT1, p1, at1), (dT2, p2, at2)
+    if check_impossible and dT1 > delta_t_max_overshoot: r1 = (-1, -1, -1)
+    if check_impossible and dT2 > delta_t_max_overshoot: r2 = (-1, -1, -1)
+
+    return r1, r2
 
 
 def calculate_yaw(Dx, Dz, direction):
@@ -134,41 +169,44 @@ def calculate_yaw(Dx, Dz, direction):
     directions = [90, 180, 270, 0]
     return (yaw + directions[direction]) % 360
 
-def BallisticsToTarget(cannon, target, power, direction, R1, R2, length):
-    """Function that calculates the elevation angle to hit the target with a cannon
+# def ballistics_to_target(cannon, target, power, direction, R1, R2, length):
+#     """Function that calculates the elevation angle to hit the target with a cannon
+#
+#     Args:
+#         cannon (tuple): Position of the cannon block held by the mount (x, y, z)
+#         target (tuple): Position of the target (x, y, z)
+#         power (int): Power of the cannon / Number of powder charges
+#         direction (str): Direction of the cannon (East, West...)
+#         R1 (int): Rotation speed of the yaw shaft
+#         R2 (int): Rotation speed of the pitch shaft
+#         length (int): Length of the cannon from mount to tip
+#
+#     Returns:
+#         tuple: The yaw, pitch required and predicted airtime of the projectile
+#     """
+#     directions = ["north", "west", "south", "east"]
+#     if direction not in directions: return "Invalid direction"
+#     direction = directions.index(direction)
+#
+#     Dx, Dz = (cannon[0] - target[0], cannon[2] - target[2])
+#
+#     delta_t, pitch, airtime = calculate_pitch(cannon, target, power, length)
+#     yaw = calculate_yaw(Dx, Dz, direction)
+#
+#     # Now, let's get the times we need to take in order to aim our cannon
+#
+#     yawTime = yaw * 20 / (0.75 * R1)  # in TICKS
+#     pitchTime = pitch * 20 / (0.75 * R2)  # in TICKS
+#     fuzeTime = airtime + (delta_t / 2) - 10
+#
+#     return (
+#         yaw,
+#         pitch,
+#         airtime,
+#         yawTime,
+#         pitchTime,
+#         fuzeTime,
+#     )
 
-    Args:
-        cannon (tuple): Position of the cannon block held by the mount (x, y, z)
-        target (tuple): Position of the target (x, y, z)
-        power (int): Power of the cannon / Number of powder charges
-        direction (str): Direction of the cannon (East, West...)
-        R1 (int): Rotation speed of the yaw shaft
-        R2 (int): Rotation speed of the pitch shaft
-        length (int): Length of the cannon from mount to tip
-
-    Returns:
-        tuple: The yaw, pitch required and predicted airtime of the projectile
-    """
-    directions = ["north", "west", "south", "east"]
-    if direction not in directions: return "Invalid direction"
-    direction = directions.index(direction)
-
-    Dx, Dz = (cannon[0] - target[0], cannon[2] - target[2])
-
-    delta_t, pitch, airtime = calculate_pitch(cannon, target, power, length, Dx, Dz, 0, 0)
-    yaw = calculate_yaw(Dx, Dz, direction)
-
-    # Now, let's get the times we need to take in order to aim our cannon
-
-    yawTime = yaw * 20 / (0.75 * R1)  # in TICKS
-    pitchTime = pitch * 20 / (0.75 * R2)  # in TICKS
-    fuzeTime = airtime + (delta_t / 2) - 10
-
-    return (
-        yaw,
-        pitch,
-        airtime,
-        yawTime,
-        pitchTime,
-        fuzeTime,
-    )
+if __name__ == "__main__":
+    print(calculate_pitch((0, 0, 0), (20, -600, 0), 70, 32, check_impossible=False))

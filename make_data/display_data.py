@@ -1,3 +1,6 @@
+import matplotlib
+matplotlib.use("GTK3Agg")
+
 import matplotlib.pyplot as plt
 import pickle
 import interpolate_data
