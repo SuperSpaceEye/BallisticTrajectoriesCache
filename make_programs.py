@@ -12,7 +12,7 @@ def make_line(line_data, rounding=2):
     return str_line
 
 
-with open("data", mode="rb") as file:
+with open("accurate_data", mode="rb") as file:
     data = prepare_data(transform_data(pickle.load(file)))
 with open("shard.lua", mode="r") as file:
     shard_str = file.read()

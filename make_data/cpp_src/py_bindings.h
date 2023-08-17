@@ -24,7 +24,7 @@ py_try_pitch(
             target_t[2].cast<float>(),
     };
 
-    return BallisticFunctions::calculate_pitch(cannon, target, power, length, max_steps);
+    return BallisticFunctions::calculate_pitch(cannon, target, power, length, 0, max_steps);
 }
 
 #endif //BALLISTICCACHE_PY_BINDINGS_H
