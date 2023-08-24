@@ -270,7 +270,7 @@ auto make_dataset_thread(
 
     //y levels below cannon meanwhile can always be hit at some point, so just simulate until it hits a reachable point
     // and only then start calculating cutoff
-    for (int y = -start_pos-1; y > -max_height_below; y-=num_threads) {
+    for (int y = start_pos-1; y > -max_height_below; y-=num_threads) {
         calculate_y_line<pitch_fn>(dataset, charges, length, points_simulated, y_done, max_length, max_simulation_steps,
                                    impossible_cutoff, delta_t_max_overshoot,
                                    step, y, true, amin, amax, gravity, num_iterations, num_elements, check_impossible);

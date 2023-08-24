@@ -40,7 +40,7 @@ def make_dataset_thread(dataset, charges, length, max_height_above, max_height_b
                          num_iterations, check_impossible)
         print(f"points calculated: {progress[0][0]} | y levels calculated: {progress[1][0]}")
 
-    for y in range(-start_pos-1, -max_height_below, -num_threads):
+    for y in range(start_pos-1, -max_height_below, -num_threads):
         calculate_y_line(dataset, y, charges, length, progress[0], progress[1], max_length, max_simulation_steps,
                          impossible_cutoff, delta_t_max_overshoot, step, False, amin, amax, gravity, num_elements,
                          num_iterations, check_impossible)
