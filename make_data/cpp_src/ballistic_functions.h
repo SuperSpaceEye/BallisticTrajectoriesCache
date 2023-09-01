@@ -97,7 +97,7 @@ inline std::pair<int64_t, int64_t> time_in_air(float y0, float y, float Vy,
 inline double rad(auto deg) {return deg * (M_PI / 180);}
 
 inline std::pair<std::array<float, 3>, bool>
-try_pitch(float tried_pitch,
+try_pitch(float pitch_to_try,
           int32_t initial_speed,
           int32_t length,
           float distance,
@@ -106,7 +106,7 @@ try_pitch(float tried_pitch,
           float delta_t_max_overshoot = 1,
           float gravity = 0.05,
           int32_t max_steps = 1000000) {
-    float tp_rad = rad(tried_pitch);
+    float tp_rad = rad(pitch_to_try);
 
     auto Vw = std::cos(tp_rad) * initial_speed;
     auto Vy = std::sin(tp_rad) * initial_speed;
@@ -122,7 +122,7 @@ try_pitch(float tried_pitch,
 
     auto [t_below, t_above] = time_in_air(y_coord_end_of_barrel, target[1], Vy, gravity, max_steps);
 
-    if (t_above < 0) { return {{-1, -1, -1}, false};}
+    if (t_below < 0) { return {{-1, -1, -1}, false};}
 
     //as vertical and horizontal time to targets are calculated separately, it falsely calculates that cannon can hit
     // a target very far away by just launching it horizontally. to allow some inaccuracy i allow a bit of overshoot
@@ -135,7 +135,7 @@ try_pitch(float tried_pitch,
             std::abs(horizontal_time_to_target-t_above)
             );
 
-    return {{(float)delta_t, tried_pitch, (float)(delta_t+horizontal_time_to_target)}, true};
+    return {{(float)delta_t, pitch_to_try, (float)(delta_t + horizontal_time_to_target)}, true};
 }
 
 template<typename A>

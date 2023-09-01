@@ -78,7 +78,7 @@ def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance,
 
     t_below, t_above = time_in_air(y_coord_of_end_barrel, target[1], Vy, gravity, max_steps)
 
-    if t_above < 0: return None, False
+    if t_below < 0: return None, False
     if t_above < horizontal_time_to_target - delta_t_max_overshoot: return None, False
 
     # if target is above cannon it may hit it on ascension
