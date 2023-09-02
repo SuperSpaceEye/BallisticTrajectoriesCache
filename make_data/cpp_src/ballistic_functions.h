@@ -103,7 +103,6 @@ try_pitch(float pitch_to_try,
           float distance,
           const std::array<float, 3> &cannon,
           const std::array<float, 3> &target,
-          float delta_t_max_overshoot = 1,
           float gravity = 0.05,
           int32_t max_steps = 1000000) {
     float tp_rad = rad(pitch_to_try);
@@ -124,15 +123,10 @@ try_pitch(float pitch_to_try,
 
     if (t_below < 0) { return {{-1, -1, -1}, false};}
 
-    //as vertical and horizontal time to targets are calculated separately, it falsely calculates that cannon can hit
-    // a target very far away by just launching it horizontally. to allow some inaccuracy i allow a bit of overshoot
-    if (t_above < horizontal_time_to_target - delta_t_max_overshoot) { return {{-1, -1, -1}, false};}
-
-
     //if target is above cannon it may hit it on ascension
     auto delta_t = std::min(
             std::abs(horizontal_time_to_target-t_below),
-            std::abs(horizontal_time_to_target-t_above)
+            std::abs(horizontal_time_to_target-(t_above > 0 ? t_above : -999999999))
             );
 
     return {{(float)delta_t, pitch_to_try, (float)(delta_t + horizontal_time_to_target)}, true};
@@ -146,15 +140,13 @@ inline std::vector<std::array<float, 3>> try_pitches(
         float distance,
         const std::array<float, 3> &cannon,
         const std::array<float, 3> &target,
-        float delta_t_max_overshoot = 1,
         float gravity = 0.05,
         int32_t max_steps=1000000
         ) {
     std::vector<std::array<float, 3>> delta_times{};
     delta_times.reserve(20);//preallocate some
     for (auto item: iter) {
-        auto [items, is_successful] = try_pitch(item, initial_speed, length, distance, cannon, target,
-                                                delta_t_max_overshoot, gravity, max_steps);
+        auto [items, is_successful] = try_pitch(item, initial_speed, length, distance, cannon, target, gravity, max_steps);
         if (!is_successful) { continue;}
         delta_times.emplace_back(items);
     }
@@ -170,14 +162,13 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
         const std::array<float, 3> &cannon,
         const std::array<float, 3> &target,
         int32_t initial_speed, int32_t length, int amin = -30, int amax = 60, float gravity = 0.05,
-        float delta_t_max_overshoot = 1, int32_t max_steps=100000,
+        float max_delta_t_error = 1, int32_t max_steps=100000,
         int num_iterations = 5, int num_elements = 20, bool check_impossible = true) {
     auto Dx = cannon[0] - target[0];
     auto Dz = cannon[2] - target[2];
     auto distance = std::sqrt(Dx * Dx + Dz * Dz);
 
-    auto delta_times = try_pitches(range(amax, amin - 1, -1), initial_speed, length, distance, cannon, target,
-                                   delta_t_max_overshoot, gravity, max_steps);
+    auto delta_times = try_pitches(range(amax, amin - 1, -1), initial_speed, length, distance, cannon, target, gravity, max_steps);
     if (delta_times.empty()) {return {{-1, -1, -1}, {-1, -1, -1}};}
 
     auto [dT1, p1, at1] = get_root(delta_times, false);
@@ -190,8 +181,8 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
     std::vector<std::array<float, 3>> dTs1, dTs2;
 
     for (int i = 0; i < num_iterations; i++) {
-        if (c1) { dTs1 = try_pitches(flinspace(p1-std::pow(10.,-i), p1+std::pow(10.,-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, delta_t_max_overshoot, gravity, max_steps);}
-        if (c2) { dTs2 = try_pitches(flinspace(p2-std::pow(10.,-i), p2+std::pow(10.,-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, delta_t_max_overshoot, gravity, max_steps);}
+        if (c1) { dTs1 = try_pitches(flinspace(p1-std::pow(10.,-i), p1+std::pow(10.,-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, max_steps);}
+        if (c2) { dTs2 = try_pitches(flinspace(p2-std::pow(10.,-i), p2+std::pow(10.,-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, max_steps);}
 
         if (c1 && dTs1.empty()) {c1 = false;}
         if (c2 && dTs2.empty()) {c2 = false;}
@@ -205,8 +196,8 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
     if (same_res) {dT2 = dT1; p2 = p1; at2 = at1;}
 
     std::array<float, 3> r1 = {dT1, p1, at1}, r2 = {dT2, p2, at2};
-    if (check_impossible && dT1 > delta_t_max_overshoot) {r1 = {-1, -1, -1};}
-    if (check_impossible && dT2 > delta_t_max_overshoot) {r2 = {-1, -1, -1};}
+    if (check_impossible && dT1 > max_delta_t_error) { r1 = {-1, -1, -1};}
+    if (check_impossible && dT2 > max_delta_t_error) { r2 = {-1, -1, -1};}
 
     return std::pair<std::array<float, 3>, std::array<float, 3>> {r1, r2};
 }
@@ -215,13 +206,13 @@ template<auto pitch_fn>
 inline void
 calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int32_t charges, int barrel_length,
                  int *points_simulated, int *y_done, int max_length, int max_simulation_steps,
-                 uint32_t impossible_cutoff, float delta_t_max_overshoot, float step, int y,
+                 uint32_t impossible_cutoff, float max_delta_t_error, float step, int y,
                  bool count_cutoff_at_the_start, int amin = -30, int amax = 60, float gravity = 0.05,
                  int num_iterations = 5, int num_elements = 20, bool check_impossible = true) {
     bool had_result = false;
     int cutoff_count = 0;
     for (float x = barrel_length; x < max_length; x += step) {
-        auto [res1, res2] = pitch_fn({0, 0, 0}, {x, y, 0}, charges, barrel_length, amin, amax, gravity, delta_t_max_overshoot, max_simulation_steps, num_iterations, num_elements, check_impossible);
+        auto [res1, res2] = pitch_fn({0, 0, 0}, {x, y, 0}, charges, barrel_length, amin, amax, gravity, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible);
         auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
         if (res[0] >= 0) {
             dataset->push_back(std::array<std::array<float, 3>, 2>{
@@ -252,7 +243,7 @@ auto make_dataset_thread(
                          int max_simulation_steps,
                          int max_length,
                          uint32_t impossible_cutoff,
-                         float delta_t_max_overshoot,
+                         float max_delta_t_error,
                          float step = 1,
                          int amin=-30, int amax=60, float gravity = 0.05,
                          int num_iterations=5, int num_elements=20,
@@ -264,7 +255,7 @@ auto make_dataset_thread(
     dataset->reserve(100000);
     for (int y = start_pos; y < max_height_above; y+=num_threads) {
         calculate_y_line<pitch_fn>(dataset, charges, length, points_simulated, y_done, max_length, max_simulation_steps,
-                                   impossible_cutoff, delta_t_max_overshoot,
+                                   impossible_cutoff, max_delta_t_error,
                                    step, y, true, amin, amax, gravity, num_iterations, num_elements, check_impossible);
     }
 
@@ -272,7 +263,7 @@ auto make_dataset_thread(
     // and only then start calculating cutoff
     for (int y = start_pos-1; y > -max_height_below; y-=num_threads) {
         calculate_y_line<pitch_fn>(dataset, charges, length, points_simulated, y_done, max_length, max_simulation_steps,
-                                   impossible_cutoff, delta_t_max_overshoot,
+                                   impossible_cutoff, max_delta_t_error,
                                    step, y, true, amin, amax, gravity, num_iterations, num_elements, check_impossible);
     }
 
@@ -291,7 +282,7 @@ auto make_dataset(
                   int max_length=600,
                   float step=1,
                   uint32_t impossible_cutoff = 50,
-                  float delta_t_max_overshoot = 1,
+                  float max_delta_t_error = 1,
                   int amin=-30, int amax=60, float gravity=0.05,
                   int num_iterations=5, int num_elements=20,
                   bool check_impossible=true
@@ -319,7 +310,7 @@ auto make_dataset(
                 max_steps,
                 max_length,
                 impossible_cutoff,
-                delta_t_max_overshoot,
+                max_delta_t_error,
                 step,
                 amin, amax, gravity, num_iterations, num_elements, check_impossible,
                 &done[i]
