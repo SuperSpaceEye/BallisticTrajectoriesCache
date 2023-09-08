@@ -126,7 +126,7 @@ try_pitch(float pitch_to_try,
     //if target is above cannon it may hit it on ascension
     auto delta_t = std::min(
             std::abs(horizontal_time_to_target-t_below),
-            std::abs(horizontal_time_to_target-(t_above > 0 ? t_above : -999999999))
+            std::abs(horizontal_time_to_target-t_above)
             );
 
     return {{(float)delta_t, pitch_to_try, (float)(delta_t + horizontal_time_to_target)}, true};
@@ -168,7 +168,7 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
     auto Dz = cannon[2] - target[2];
     auto distance = std::sqrt(Dx * Dx + Dz * Dz);
 
-    auto delta_times = try_pitches(range(amax, amin - 1, -1), initial_speed, length, distance, cannon, target, gravity, max_steps);
+    auto delta_times = try_pitches(range(amax, amin  - 1, -1), initial_speed, length, distance, cannon, target, gravity, max_steps);
     if (delta_times.empty()) {return {{-1, -1, -1}, {-1, -1, -1}};}
 
     auto [dT1, p1, at1] = get_root(delta_times, false);
