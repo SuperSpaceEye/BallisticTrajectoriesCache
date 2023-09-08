@@ -33,13 +33,7 @@ inline auto range(int start, int end, int step=1) {
 }
 
 inline std::vector<float> flinspace(float start, float stop, int num_elements, float min, float max) {
-    std::vector<float> items;
-    items.reserve(num_elements);
-    for (auto item: linspace<float>(start, stop, num_elements)) {
-        if (item < min || item > max) {continue;}
-        items.emplace_back(item);
-    }
-    return items;
+    return linspace<float>(std::max(start, min), std::min(stop, max), num_elements);
 }
 
 std::array<float, 3> get_root(const std::vector<std::array<float, 3>> & data,
@@ -213,7 +207,8 @@ calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int3
     int cutoff_count = 0;
     for (float x = barrel_length; x < max_length; x += step) {
         auto [res1, res2] = pitch_fn({0, 0, 0}, {x, y, 0}, charges, barrel_length, amin, amax, gravity, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible);
-        auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
+//        auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
+        auto res = res2;
         if (res[0] >= 0) {
             dataset->push_back(std::array<std::array<float, 3>, 2>{
                     std::array<float, 3>{(float) x, (float) y, 0},

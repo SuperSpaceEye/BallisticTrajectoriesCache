@@ -8,11 +8,7 @@ from numpy import linspace
 
 #filter linspace
 def flinspace(start, stop, num_elements, min, max):
-    items = []
-    for item in linspace(start, stop, num_elements):
-        if item < min or item > max: continue
-        items.append(item)
-    return items
+    return linspace(max(start, min), min(stop, max), num_elements)
 
 
 def get_root(d, from_end):
