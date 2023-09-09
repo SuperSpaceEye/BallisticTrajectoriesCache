@@ -199,16 +199,17 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
 }
 
 template<auto pitch_fn>
-inline void
-calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int32_t charges, int barrel_length,
+inline double
+calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int32_t charges, double starting_x, double length,
                  int *points_simulated, int *y_done, int max_length, int max_simulation_steps,
                  uint32_t impossible_cutoff, float max_delta_t_error, float step, int y,
                  bool count_cutoff_at_the_start, int amin = -30, int amax = 60, float gravity = 0.05, float drag = 0.99,
                  int num_iterations = 5, int num_elements = 20, bool check_impossible = true) {
     bool had_result = false;
     int cutoff_count = 0;
-    for (float x = barrel_length; x < max_length; x += step) {
-        auto [res1, res2] = pitch_fn({0, 0, 0}, {x, y, 0}, charges, barrel_length, amin, amax, gravity, drag, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible);
+    bool dont_change_starting = false;
+    for (double x = starting_x; x < max_length; x += step) {
+        auto [res1, res2] = pitch_fn({0, 0, 0}, {x, y, 0}, charges, length, amin, amax, gravity, drag, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible);
 //        auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
         auto res = res2;
         if (res[0] >= 0) {
@@ -217,6 +218,9 @@ calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int3
                     res
             });
             had_result = true;
+            dont_change_starting = true;
+        } else {
+            if (!dont_change_starting) {starting_x = x;}
         }
         (*points_simulated)++;
 
@@ -224,6 +228,7 @@ calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int3
         if (cutoff_count >= impossible_cutoff) { break;}
         }
     (*y_done)++;
+    return starting_x;
 }
 
 template<auto pitch_fn>
@@ -250,16 +255,25 @@ auto make_dataset_thread(
                                  ) {
     //y level above cannot may not be possible to reach at all, so to prevent simulating whole like cutoff starts early
     dataset->reserve(100000);
-    for (int y = start_pos; y < max_height_above; y+=num_threads) {
-        calculate_y_line<pitch_fn>(dataset, charges, length, points_simulated, y_done, max_length, max_simulation_steps,
+
+    if (start_pos == 0) {
+    calculate_y_line<pitch_fn>(dataset, charges, length, length, points_simulated, y_done, max_length, max_simulation_steps,
+                               impossible_cutoff, max_delta_t_error,
+                               step, 0, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible);
+    }
+
+    double starting_x = length;
+    for (int y = start_pos+1; y < max_height_above; y+=num_threads) {
+        starting_x = calculate_y_line<pitch_fn>(dataset, charges, starting_x, length, points_simulated, y_done, max_length, max_simulation_steps,
                                    impossible_cutoff, max_delta_t_error,
                                    step, y, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible);
     }
 
+    starting_x = length;
     //y levels below cannon meanwhile can always be hit at some point, so just simulate until it hits a reachable point
     // and only then start calculating cutoff
     for (int y = start_pos-1; y > -max_height_below; y-=num_threads) {
-        calculate_y_line<pitch_fn>(dataset, charges, length, points_simulated, y_done, max_length, max_simulation_steps,
+        starting_x = calculate_y_line<pitch_fn>(dataset, charges, starting_x, length, points_simulated, y_done, max_length, max_simulation_steps,
                                    impossible_cutoff, max_delta_t_error,
                                    step, y, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible);
     }
