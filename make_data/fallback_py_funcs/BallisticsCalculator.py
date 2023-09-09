@@ -7,8 +7,8 @@ from numpy import linspace
 
 
 #filter linspace
-def flinspace(start, stop, num_elements, min, max):
-    return linspace(max(start, min), min(stop, max), num_elements)
+def flinspace(start, stop, num_elements, min_, max_):
+    return linspace(max(start, min_), min(stop, max_), num_elements)
 
 
 def get_root(d, from_end):
@@ -22,7 +22,7 @@ def get_root(d, from_end):
         return d[-1]
 
 
-def time_in_air(y0, y, Vy, gravity=0.05, max_steps=100000):
+def time_in_air(y0, y, Vy, gravity=0.05, drag=0.99, max_steps=100000):
     t = 0
     t_below = 999_999_999
 
@@ -31,7 +31,7 @@ def time_in_air(y0, y, Vy, gravity=0.05, max_steps=100000):
         while t < max_steps:
             y0p = y0
             y0 += Vy
-            Vy = 0.99 * Vy - gravity
+            Vy = drag * Vy - gravity
 
             t += 1
 
@@ -45,7 +45,7 @@ def time_in_air(y0, y, Vy, gravity=0.05, max_steps=100000):
 
     while t < max_steps:
         y0 += Vy
-        Vy = 0.99 * Vy - gravity
+        Vy = drag * Vy - gravity
 
         t += 1
 
@@ -57,7 +57,7 @@ def time_in_air(y0, y, Vy, gravity=0.05, max_steps=100000):
 
 def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance,
                             cannon, target,
-                            gravity=0.05, max_steps=100000):
+                            gravity=0.05, drag=0.99, max_steps=100000):
     tp_rad = radians(tried_pitch)
 
     Vw = cos(tp_rad) * initial_speed
@@ -68,11 +68,11 @@ def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance,
     if Vw == 0: return None, False
     part = 1 - ((distance - x_coord_2d) / (100 * Vw))
     if part <= 0: return None, False
-    horizontal_time_to_target = abs(log(part) / (-0.010050335853501)) # This is the air resistance formula, here the denominator is ln(0.99)
+    horizontal_time_to_target = abs(log(part) / log(drag))
 
     y_coord_of_end_barrel = cannon[1] + sin(tp_rad) * length
 
-    t_below, t_above = time_in_air(y_coord_of_end_barrel, target[1], Vy, gravity, max_steps)
+    t_below, t_above = time_in_air(y_coord_of_end_barrel, target[1], Vy, gravity, drag, max_steps)
 
     if t_below < 0: return None, False
 
@@ -94,12 +94,12 @@ def try_pitches(iter, *args):
     return delta_times
 
 
-def calculate_pitch(cannon, target, initial_speed, length, amin=-30, amax=60, gravity=0.05, max_delta_t_error=1,
+def calculate_pitch(cannon, target, initial_speed, length, amin=-30, amax=60, gravity=0.05, drag=0.99, max_delta_t_error=1,
                     max_steps=100000, num_iterations=5, num_elements=20, check_impossible=True):
     Dx, Dz = cannon[0] - target[0], cannon[2] - target[2]
     distance = sqrt(Dx * Dx + Dz * Dz)
 
-    delta_times = try_pitches(range(amax, amin-1, -1), initial_speed, length, distance, cannon, target, gravity, max_steps)
+    delta_times = try_pitches(range(amax, amin-1, -1), initial_speed, length, distance, cannon, target, gravity, drag, max_steps)
     if len(delta_times) == 0: return (-1, -1, -1), (-1, -1, -1)
 
     dT1, p1, at1 = get_root(delta_times, False)
@@ -110,8 +110,8 @@ def calculate_pitch(cannon, target, initial_speed, length, amin=-30, amax=60, gr
     same_res = p1 == p2  # if result is same
 
     for i in range(0, num_iterations):
-        if c1: dTs1 = try_pitches(flinspace(p1 - 10**(-i), p1 + 10**(-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, max_steps)
-        if c2: dTs2 = try_pitches(flinspace(p2 - 10**(-i), p2 + 10**(-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, max_steps)
+        if c1: dTs1 = try_pitches(flinspace(p1 - 10**(-i), p1 + 10**(-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, drag, max_steps)
+        if c2: dTs2 = try_pitches(flinspace(p2 - 10**(-i), p2 + 10**(-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, drag, max_steps)
 
         if c1 and len(dTs1) == 0: c1=False
         if c2 and len(dTs2) == 0: c2=False

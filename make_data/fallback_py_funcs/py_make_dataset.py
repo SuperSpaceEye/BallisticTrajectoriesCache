@@ -5,13 +5,13 @@ from multiprocessing import Process
 
 def calculate_y_line(dataset, y, charges, barrel_length, points_simulated, y_done, max_length,
                      max_simulation_steps=100000, impossible_cutoff=50, delta_t_max_overshoot=1, step=1,
-                     count_cutoff_at_the_start=False, amin=-30, amax=60, gravity=0.05, num_iterations=5,
+                     count_cutoff_at_the_start=False, amin=-30, amax=60, gravity=0.05, drag=0.99, num_iterations=5,
                      num_elements=20, check_impossible=True):
     had_result = False
     cutoff_count = 0
     x = barrel_length
     while x < max_length:
-        res1, res2 = calculate_pitch((0, 0, 0), (x, y, 0), charges, barrel_length, amin, amax, gravity,
+        res1, res2 = calculate_pitch((0, 0, 0), (x, y, 0), charges, barrel_length, amin, amax, gravity, drag,
                                      delta_t_max_overshoot, max_simulation_steps, num_iterations, num_elements,
                                      check_impossible)
         res = res1 if res2[0] > res1[0] >= 0 else res2
@@ -32,17 +32,17 @@ def make_dataset_thread(dataset, charges, length, max_height_above, max_height_b
                         start_pos, num_threads, progress,
                         max_simulation_steps, max_length, impossible_cutoff,
                         delta_t_max_overshoot, step, done,
-                        amin=-30, amax=60, gravity=0.05, num_iterations=5, num_elements=20,
+                        amin=-30, amax=60, gravity=0.05, drag=0.99, num_iterations=5, num_elements=20,
                         check_impossible=True):
     for y in range(start_pos, max_height_above, num_threads):
         calculate_y_line(dataset, y, charges, length, progress[0], progress[1], max_length, max_simulation_steps,
-                         impossible_cutoff, delta_t_max_overshoot, step, True, amin, amax, gravity, num_elements,
+                         impossible_cutoff, delta_t_max_overshoot, step, True, amin, amax, gravity, drag, num_elements,
                          num_iterations, check_impossible)
         print(f"points calculated: {progress[0][0]} | y levels calculated: {progress[1][0]}")
 
     for y in range(start_pos-1, -max_height_below, -num_threads):
         calculate_y_line(dataset, y, charges, length, progress[0], progress[1], max_length, max_simulation_steps,
-                         impossible_cutoff, delta_t_max_overshoot, step, False, amin, amax, gravity, num_elements,
+                         impossible_cutoff, delta_t_max_overshoot, step, False, amin, amax, gravity, drag, num_elements,
                          num_iterations, check_impossible)
         print(f"points calculated: {progress[0][0]} | y levels calculated: {progress[1][0]}")
 
@@ -51,7 +51,7 @@ def make_dataset_thread(dataset, charges, length, max_height_above, max_height_b
 def make_dataset(charges, length, max_height_above=256, max_height_below=256,
                  num_threads=16, verbose=True, max_steps=100000, max_length=600,
                  step=1, impossible_cutoff=50, delta_t_max_overshoot=1,
-                 amin=-30, amax=60, gravity=0.05, num_iterations=5, num_elements=20,
+                 amin=-30, amax=60, gravity=0.05, drag=0.99, num_iterations=5, num_elements=20,
                  check_impossible=True):
     # m = multiprocessing.Manager()
     # dataset = [m.list() for i in range(num_threads)]
@@ -63,7 +63,7 @@ def make_dataset(charges, length, max_height_above=256, max_height_below=256,
 
     make_dataset_thread(dataset, charges, length, max_height_above, max_height_below, 0, 1, [[0], [0]],
                         max_steps, max_length, impossible_cutoff, delta_t_max_overshoot, step, done,
-                        amin, amax, gravity, num_iterations, num_elements, check_impossible)
+                        amin, amax, gravity, drag, num_iterations, num_elements, check_impossible)
 
     return [dataset, ]
 
