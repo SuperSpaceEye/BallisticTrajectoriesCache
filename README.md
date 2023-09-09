@@ -7,7 +7,7 @@ This project allows getting needed pitch for [Create Big Cannons](https://www.cu
 1. Install requirements.txt
 
 Either:
-2. Install c++ compiler that supports at least c++17
+2. Install c++ compiler that supports at least c++20
 3. Install pybind11 for c++ https://github.com/pybind/pybind11
 4. In make_data run "python startup.py install" (It will compile and install it as a python package. if you don't want it, run "pip uninstall CannonBallisticFunctions" after finishing working with it. I will probably make it a pip package at some point.)
 
@@ -16,7 +16,7 @@ Or:
 
 ## How to compile programs
 0. 1. Install requirements.txt
-   2. Install c++ compiler that supports at least c++17
+   2. Install c++ compiler that supports at least c++20
    3. Install pybind11 for c++ https://github.com/pybind/pybind11
    4. In make_data run "python startup.py install" (It will compile and install it as a python package. if you don't want it, run "pip uninstall CannonBallisticFunctions" after finishing working with it. I will probably make it a pip package at some point.)
 1. Generate data with make_dataset.py in make_data. You can view the result by viewing display_data.py
