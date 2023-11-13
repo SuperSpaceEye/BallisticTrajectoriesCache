@@ -6,7 +6,7 @@ import pickle
 import interpolate_data
 
 print("Loading data")
-with open("../data_1", mode="rb") as file:
+with open("../data", mode="rb") as file:
     data = pickle.load(file)
 
 print("Transforming data")
