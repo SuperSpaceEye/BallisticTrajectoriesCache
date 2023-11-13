@@ -1,5 +1,5 @@
 try:
-    raise Exception()
+    # raise Exception()
     import datashader
     import colorcet
     import datashader_display_data

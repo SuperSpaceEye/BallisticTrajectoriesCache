@@ -5,10 +5,12 @@ import matplotlib.pyplot as plt
 import pickle
 import interpolate_data
 
-with open("../data", mode="rb") as file:
+print("Loading data")
+with open("../data_1", mode="rb") as file:
     data = pickle.load(file)
 
-data = interpolate_data.transform_data(data)
+print("Transforming data")
+data = interpolate_data.transform_data(data, do_interpolate=False)
 
 x_axis = []
 y_axis = []
@@ -17,18 +19,20 @@ pitch = []
 airtime = []
 accuracy = []
 
+print("Repacking data")
 # for thread_result in data_n:
 for key in data:
     line = data[key]
     for item in line:
-        x_axis.append(item[0][0])
-        y_axis.append(item[0][1])
+        x_axis.append(item[0])
+        y_axis.append(int(key))
 
         delta_t.append(item[1][0])
         # delta_t.append(math.log(item[1][0], 2))
         pitch.append(item[1][1])
         airtime.append(item[1][2])
         accuracy.append(1 - item[1][0]/item[1][2])
+print("Finished repacking")
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
 

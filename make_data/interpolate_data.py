@@ -49,24 +49,36 @@ def interpolate_line(line):
     return newline
 
 
-def transform_data(data):
+def transform_data(data, collapse_into_distance=True, do_interpolate=True):
     collapsed_data = []
     for thread_result in data:
         collapsed_data += thread_result
 
     lines = {}
-
-    for item in collapsed_data:
-        x, y, z = item[0]
+    for it in collapsed_data:
+        x, y, z = it[0]
 
         y = int(y)
 
         if y not in lines:
             lines[y] = []
 
-        lines[y].append(item)
+        if not collapse_into_distance:
+            lines[y].append(it)
+        else:
+            lines[y].append((int(np.sqrt(x*x+z*z)), it[1]))
 
-    for k in lines:
-        lines[k] = interpolate_line(lines[k])
+    if do_interpolate:
+        print("Checking for interpolation")
+        for k in lines:
+            line = lines[k]
+            start = line[0][0][0] if not collapse_into_distance else line[0][0]
+            is_cont = True
+            for item in line:
+                if start > (item[0][0] if not collapse_into_distance else item[0]):
+                    is_cont = False
+                    print(f"Interpolating line {k}")
+            if not is_cont:
+                lines[k] = interpolate_line(lines[k])
 
     return lines

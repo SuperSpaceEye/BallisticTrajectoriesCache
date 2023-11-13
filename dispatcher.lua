@@ -1,119 +1,120 @@
-local num_shards = REPLACE_THIS_WITH_NUM_SHARDS
-local shards_boundaries = {REPLACE_THIS_WITH_BOUNDARIES}
-local shards_modem_side = "back"
+local needed_headers = REPLACE_THIS_WITH_NEEDED_HEADERS
+local data_modem_side = "back"
+local data_modem = peripheral.wrap(data_modem_side)
+data_modem.open(REPLACE_THIS_WITH_MODEM_CHANNEL)
 
-local data_modem = peripheral.wrap(shards_modem_side)
+local function nKeys(t) local m=0 for _,_ in pairs(t) do m=m+1 end return m end
 
-term.clear()
-term.setCursorPos(1, 1)
+local function header_to_offset(name)
+    local start, stop = string.find(name, "REPLACE_THIS_WITH_HEADER_NAME")
+    if start ~= 1 then return false, nil end
+    local header = string.sub(name, stop+1)
+    return true, header
+end
 
-local function wait_for_shards()
-    print("Dispatcher startup procedure")
+local function await_all_headers()
+    local headers_yet_to_verify = {}
+    local got_data = {}
+    for k, v in pairs(needed_headers) do headers_yet_to_verify["REPLACE_THIS_WITH_HEADER_NAME"..v]=true end
 
-    for i=1, num_shards do
-        print("Waiting for", i, "shard.")
-        data_modem.open(i)
-
+    parallel.waitForAll(
+    function()
+       while nKeys(headers_yet_to_verify) ~= 0 do
+           data_modem.transmit(REPLACE_THIS_WITH_MODEM_CHANNEL, REPLACE_THIS_WITH_MODEM_CHANNEL, {action="give_headers"})
+           sleep()
+       end
+    end,
+    function()
+       while nKeys(headers_yet_to_verify) ~= 0 do
+       while nKeys(headers_yet_to_verify) ~= 0 do
+           local _, _, _, _, req, _ = os.pullEvent("modem_message")
+           if req == nil then break end
+           if req.header == nil then break end
+           headers_yet_to_verify[req.header] = nil
+       end
+       end
+    end
+    )
+    for k, header in pairs(needed_headers) do
+        header = "REPLACE_THIS_WITH_HEADER_NAME"..header
         while true do
-            local _, side, channel, _, message, _ = os.pullEvent("modem_message")
+            data_modem.transmit(REPLACE_THIS_WITH_MODEM_CHANNEL, REPLACE_THIS_WITH_MODEM_CHANNEL, {action="give_data", ["header"]=header})
+            local _, _, _, _, req, _ = os.pullEvent("modem_message")
+            if req ~= nil and req.header == header and req.data ~= nil then
+                local converted, offset = header_to_offset(header)
+                if converted then got_data[offset] = req.data end
+                break
+            end
+        end
+    end
+    return got_data
+end
 
-            if side == shards_modem_side and channel == i then
-                local msg = textutils.unserialize(message)
-                if msg["is_startup_procedure"]
-                        and msg["is_shard"]
-                        and msg["num_shard"] == i  then
-                    local response = {is_startup_procedure=true, is_shard=false, num_shard=i}
-                    print("Got response from", i, "shard")
+local function combine_data(data)
+    local combined_data = {}
+    for k, part in pairs(data) do
+        local start = tonumber(k)
+        part = textutils.unserialise(part)
+        print(start, nKeys(part))
+        --if REPLACE_THIS_WITH_IF_RECOMBINE then
+        --    for i, line in pairs(part) do
+        --        local x = 2
+        --        local newline = {line[1]}
+        --
+        --        while x <= #line do
+        --            table.insert(newline, {line[x], line[x+1], line[x+2]})
+        --            x = x + 3
+        --        end
+        --        part[i] = newline
+        --    end
+        --end
 
-                    data_modem.transmit(i, i, textutils.serialize(response))
-                    break;
+        if REPLACE_THIS_WITH_IF_RECOMBINE then
+            for i, line in ipairs(part) do
+                local x = 2
+                local nx = line[1]
+                if i - 256 + start == 0 then
+                    print(i-256+start, i+start, i, start, nx)
                 end
+                local newline = {}
+
+                while x <= #line do
+                    newline[nx] = {line[x], line[x+1], line[x+2]}
+                    x = x + 3
+                    nx = nx + 1
+                end
+                part[i] = newline
             end
         end
 
-        data_modem.close(i)
-    end
-end
-
-local function get_shard(y)
-    for k, v in pairs(shards_boundaries) do
-        -- 1 - min_y incl, 2 - max_y not incl
-        if y >= tonumber(v[1]) and y < tonumber(v[2]) then
-            return k
+        for i=start, nKeys(part)+start-1 do
+            if part[i-start+1] == nil then print("A FUCKING ERROR"); error() end
+            combined_data[i] = part[i-start+1]
         end
     end
-    return -1
+    return combined_data
 end
 
-local function wait_for_reply(shard_num, x, y)
-    while true do
-        local _, side, channel, _, message, _ = os.pullEvent("modem_message")
-        local msg = textutils.unserialize(message)
-        if side == shards_modem_side and channel == shard_num
-                and msg["is_response"]
-                and msg["num_shard"] == shard_num
-                and msg["y_pos"] == y
-                and msg["x_pos"] == x
-        then
-            msg["is_response"] = nil
-            msg["num_shard"] = nil
-            return msg
-        end
-        os.sleep(0)
-    end
-end
+local data = combine_data(await_all_headers())
 
-local function request_data(request, channel)
-    while true do
-        data_modem.transmit(channel, channel, textutils.serialize(request))
-        os.sleep(0)
-    end
-end
+local get_data = REPLACE_THIS_WITH_IF_RECOMBINE and (
+        function(y, x)
+            local line = data[y+REPLACE_THIS_WITH_Y_DISPLACEMENT]
+            --return line[x-line[1]] --get x displacement from first line value, do math
+            return line[x] --get x displacement from first line value, do math
+        end) or (
+        function (y, x)
+            local line = data[y+REPLACE_THIS_WITH_Y_DISPLACEMENT]
+            x = (x-line[1])*3 + 2 --get x displacement from first line value, do math
+            return {line[x], line[x+1], line[x+2]}
+        end)
 
-local function get_data(x, y)
-    local shard_num = get_shard(y)
+print(REPLACE_THIS_WITH_Y_DISPLACEMENT)
+print(textutils.serialize(get_data(0, 38)))
 
-    if shard_num <= 0 then
-        return {
-            x_pos=x,
-            y_pos=y,
-            delta_t=-1,
-            pitch=-1,
-            airtime=-1
-        }
-    end
-
-    local request = {
-        num_shard=shard_num,
-        y_pos=y,
-        x_pos=x,
-        is_request=true
-    }
-
-    data_modem.open(shard_num)
-
-    local response = {}
-
-    parallel.waitForAny(
-            (function () request_data(request, shard_num) end),
-            (function () response = wait_for_reply(shard_num, x, y) end)
-    )
-
-    data_modem.close(shard_num)
-
-    return response
-end
-
-local function wait_for_request()
-    while true do
-        print("write y")
-        local y = tonumber(io.read())
-        print("write x")
-        local x = tonumber(io.read())
-
-        print(textutils.serialize(get_data(x, y)))
-    end
-end
-
-wait_for_shards()
-wait_for_request()
+return {
+    data = data,
+    get_data = get_data,
+    y_displacement = REPLACE_THIS_WITH_Y_DISPLACEMENT,
+    recombine_at_runtime = REPLACE_THIS_WITH_IF_RECOMBINE
+}

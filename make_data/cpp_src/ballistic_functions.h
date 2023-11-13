@@ -107,10 +107,15 @@ try_pitch(float pitch_to_try,
 
     float x_coord_2d = length * std::cos(tp_rad);
 
-    if (Vw == 0) {return {{-1, -1, -1}, false};}
-    auto part = 1 - (distance - x_coord_2d) / (100 * Vw);
-    if (part <= 0) { return {{-1, -1, -1}, false};}
-    auto horizontal_time_to_target = std::abs(std::log(part) / std::log(drag));
+    double horizontal_time_to_target;
+    if (drag < 1.0) {
+        if (Vw == 0) { return {{-1, -1, -1}, false}; }
+        auto part = 1 - (distance - x_coord_2d) / (100 * Vw);
+        if (part <= 0) { return {{-1, -1, -1}, false}; }
+        horizontal_time_to_target = std::abs(std::log(part) / (std::log(drag) + 1e-200));
+    } else {
+        horizontal_time_to_target = distance / Vw;
+    }
 
     float y_coord_end_of_barrel = cannon[1] + std::sin(tp_rad) * length;
 

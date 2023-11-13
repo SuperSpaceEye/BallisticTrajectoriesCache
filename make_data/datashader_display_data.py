@@ -3,34 +3,11 @@ import pandas as pd
 import colorcet as cc
 import matplotlib.pyplot as plt
 import numpy as np
-from fast_histogram import histogram2d
-import matplotlib.colors as colors
 import pickle
 import interpolate_data
-import itertools as it
 
-X = np.array([[x, y, np.random.randint(0, 50, 1)[0]] for x, y in it.product(range(50), range(50))])
-# X = X.reshape((-1, 2))
-# Z = np.random.random(1000000)
-
-# cmap = cc.cm["fire"].copy()
-# cmap.set_bad(cmap.get_under())  # set the color for 0
-# bounds = [[X[:, 0].min(), X[:, 0].max()], [X[:, 1].min(), X[:, 1].max()]]
-# h = histogram2d(X[:, 0], X[:, 1], range=bounds, bins=500)
-#
-# plt.imshow(h, norm=colors.LogNorm(vmin=1, vmax=h.max()), cmap=cmap)
-# plt.axis('off')
-# plt.colorbar()
-# plt.show()
-
-# df = pd.DataFrame(data=X, columns=["x", "y", "val"])  # create a DF from array
-# cvs = ds.Canvas(plot_width=500, plot_height=500)  # auto range or provide the `bounds` argument
-# agg = cvs.points(df, 'x', 'y', agg=ds.mean("val"))  # this is the histogram
-# img = ds.tf.set_background(ds.tf.shade(agg), "white").to_pil()  # create a rasterized image
-# plt.imshow(img)
-# plt.axis('off')
-# plt.show()
-
+figure_width = 1200
+figure_height = 600
 
 import matplotlib
 matplotlib.use("GTK3Agg")
@@ -46,10 +23,12 @@ def make_agg(df, width=500, height=500):
 cmap = cc.cm["fire"].copy()
 cmap.set_bad(cmap.get_under())  # set the color for 0
 
+print("Loading data")
 with open("../data", mode="rb") as file:
     data = pickle.load(file)
 
-data = interpolate_data.transform_data(data)
+print("Transforming data")
+data = interpolate_data.transform_data(data, do_interpolate=False)
 
 x_axis = []
 y_axis = []
@@ -58,12 +37,14 @@ pitch = []
 airtime = []
 accuracy = []
 
+print("Repacking data")
+
 # for thread_result in data_n:
 for key in data:
     line = data[key]
     for item in line:
-        x_axis.append(item[0][0])
-        y_axis.append(item[0][1])
+        x_axis.append(item[0])
+        y_axis.append(int(key))
 
         delta_t.append(item[1][0])
         # delta_t.append(math.log(item[1][0], 2))
@@ -71,11 +52,22 @@ for key in data:
         airtime.append(item[1][2])
         accuracy.append(1 - item[1][0]/item[1][2])
 
-delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), 1200, 600)
-# pitch_agg    = make_agg(make_df(x_axis, y_axis, pitch))
-# airtime_agg  = make_agg(make_df(x_axis, y_axis, airtime))
-# accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy))
+print("Finished repacking")
 
+min_y = min(y_axis)
+min_x = min(x_axis)
+max_y = max(y_axis)
+max_x = max(x_axis)
+
+y_range = max_y - min_y
+x_range = max_x - min_x
+
+print(f"Min y {min(y_axis)} Max y {max(y_axis)} Min x {min(x_axis)} Max x {max(x_axis)}")
+
+delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), 1200, 600)
+pitch_agg    = make_agg(make_df(x_axis, y_axis, pitch), 1200, 600)
+airtime_agg  = make_agg(make_df(x_axis, y_axis, airtime), 1200, 600)
+accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy), 1200, 600)
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
 
@@ -85,17 +77,23 @@ ax[1, 0].title.set_text("airtime")
 ax[1, 1].title.set_text("accuracy")
 
 sc1 = ax[0, 0].imshow(ds.tf.set_background(ds.tf.shade(delta_t_agg, cmap=cc.bmy), "white").to_pil())
+sc2 = ax[0, 1].imshow(ds.tf.set_background(ds.tf.shade(pitch_agg, cmap=cc.bmy), "white").to_pil())
+sc3 = ax[1, 0].imshow(ds.tf.set_background(ds.tf.shade(airtime_agg, cmap=cc.bmy), "white").to_pil())
+sc4 = ax[1, 1].imshow(ds.tf.set_background(ds.tf.shade(accuracy_agg, cmap=cc.bmy), "white").to_pil())
 
-# sc1 = ax[0, 0].scatter(x_axis, y_axis, c=delta_t)
-# sc2 = ax[0, 1].scatter(x_axis, y_axis, c=pitch)
-# sc3 = ax[1, 0].scatter(x_axis, y_axis, c=airtime)
-# sc4 = ax[1, 1].scatter(x_axis, y_axis, c=accuracy)
+def make_x_labels(labels):
+    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(min_x, max_x, len(labels)-1)))
 
-# plt.scatter(x_axis, y_axis, c=z_axis)
+def make_y_labels(labels):
+    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(max_y, min_y, len(labels)-1)))
 
-# plt.colorbar(sc1, ax=ax[0, 0])
-# plt.colorbar(sc2, ax=ax[0, 1])
-# plt.colorbar(sc3, ax=ax[1, 0])
-# plt.colorbar(sc4, ax=ax[1, 1])
+def make_labels_for_ax(ax):
+    ax.set_xticklabels(make_x_labels(ax.get_xticklabels()))
+    ax.set_yticklabels(make_y_labels(ax.get_yticklabels()))
+
+make_labels_for_ax(ax[0,0])
+make_labels_for_ax(ax[0,1])
+make_labels_for_ax(ax[1,0])
+make_labels_for_ax(ax[1,1])
 
 plt.show()

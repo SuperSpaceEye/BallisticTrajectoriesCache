@@ -65,10 +65,13 @@ def calculate_if_pitch_hits(tried_pitch, initial_speed, length, distance,
 
     x_coord_2d = length * cos(tp_rad)
 
-    if Vw == 0: return None, False
-    part = 1 - ((distance - x_coord_2d) / (100 * Vw))
-    if part <= 0: return None, False
-    horizontal_time_to_target = abs(log(part) / log(drag))
+    if drag < 1:
+        if Vw == 0: return None, False
+        part = 1 - ((distance - x_coord_2d) / (100 * Vw))
+        if part <= 0: return None, False
+        horizontal_time_to_target = abs(log(part) / log(drag))
+    elif drag == 1.0:
+        horizontal_time_to_target = distance/Vw
 
     y_coord_of_end_barrel = cannon[1] + sin(tp_rad) * length
 

@@ -1,79 +1,47 @@
-local data = {REPLACE_THIS_WITH_DATA}
-local shard_num = REPLACE_THIS_WITH_SHARD_NUM
-local displacement = REPLACE_THIS_WITH_SHARD_DISPLACEMENT
-local shard_modem_side = "back"
+local data_modem = peripheral.find("modem")
+data_modem.open(REPLACE_THIS_WITH_MODEM_CHANNEL)
 
-local data_modem = peripheral.wrap(shard_modem_side)
-data_modem.open(shard_num)
+local function check_if_header(name)
+    local start, stop = string.find(name, "REPLACE_THIS_WITH_HEADER_NAME")
+    if start ~= 1 then return false end
+    return true
+end
 
-term.clear()
-term.setCursorPos(1, 1)
-
-local function push_init()
-    while true do
-        local message = {is_startup_procedure=true, is_shard=true, num_shard=shard_num}
-        data_modem.transmit(shard_num, shard_num, textutils.serialize(message))
-        os.sleep(0)
+local headers = {}
+for k, filename in pairs(fs.list("/")) do
+    if check_if_header(filename) then
+        table.insert(headers, filename)
     end
 end
 
-local function pull_init()
-    while true do
-        local _, side, channel, _, message, _ = os.pullEvent("modem_message")
-        if side == shard_modem_side and channel == shard_num then
-            local message = textutils.unserialize(message)
-            if message["is_startup_procedure"]
-                    and not message["is_shard"]
-                    and message["num_shard"] == shard_num then
-                print("Got response from dispatcher.")
-                return;
-            end
+if #headers == 0 then error("No data file detected")
+else
+    term.clear()
+    term.setCursorPos(1, 1)
+    print("Data loaded:")
+    for i=1, #headers do
+        term.setCursorPos(1, i+1)
+        print(i..") "..headers[i])
+    end
+end
+
+while true do
+while true do
+    local _, _, _, _, req, _ = os.pullEvent("modem_message")
+    if req == nil then break end
+    if req.action == nil then break end
+    if req.action == "give_headers" then
+        for k, header in pairs(headers) do
+            data_modem.transmit(REPLACE_THIS_WITH_MODEM_CHANNEL, REPLACE_THIS_WITH_MODEM_CHANNEL, {["header"]=header})
         end
-        os.sleep(0)
-    end
-end
-
-local function wait_for_dispatcher()
-    print("Shard", shard_num ,"startup procedure")
-    parallel.waitForAny(pull_init, push_init)
-end
-
--- Request message  {num_shard, y_pos, x_pos, is_request}
--- Response message {num_shard, y_pos, x_pos, delta_t, pitch, airtime, is_response}
-
-local function wait_for_request()
-    while true do
-        local _, side, channel, _, message, _ = os.pullEvent("modem_message")
-        print(message)
-        if side == shard_modem_side and channel == shard_num then
-            local msg = textutils.unserialize(message)
-            if msg["is_request"] and msg["num_shard"] == shard_num then
-                local response = {num_shard=shard_num,
-                                  y_pos=msg["y_pos"],
-                                  x_pos=msg["x_pos"],
-                                  delta_t=-1, pitch=-1, airtime=-1,
-                                  is_response=true
-                }
-
-                local line = data[tonumber(msg["y_pos"])+displacement]
-
-                if line ~= nil then
-                    local item = line[tonumber(msg["x_pos"])]
-                    if item ~= nil then
-                        response = {num_shard=shard_num,
-                                    y_pos=msg["y_pos"],
-                                    x_pos=msg["x_pos"],
-                                    delta_t=item[1], pitch=item[2], airtime=item[3],
-                                    is_response=true
-                        }
-                    end
-                end
-
-                data_modem.transmit(shard_num, shard_num, textutils.serialize(response))
+    elseif req.action == "give_data" then
+        for k, header in pairs(headers) do
+            if header == req.header then
+                local h = fs.open(header, "r")
+                data_modem.transmit(REPLACE_THIS_WITH_MODEM_CHANNEL, REPLACE_THIS_WITH_MODEM_CHANNEL, {["header"]=header, data=h.readAll()})
+                h.close()
             end
         end
     end
 end
-
-wait_for_dispatcher()
-wait_for_request()
+end
