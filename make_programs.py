@@ -25,7 +25,8 @@ def make_line(line_data, rounding=ROUNDING):
     str_line += str(line_data[0][0]) + ","  # add info about distance offset to first item
 
     for item in line_data:
-        str_line += smart_to_str(round(item, rounding)) + ","
+        for it in item:
+            str_line += smart_to_str(round(it, rounding)) + ","
 
     str_line = str_line[:-1]
     str_line += "},"
