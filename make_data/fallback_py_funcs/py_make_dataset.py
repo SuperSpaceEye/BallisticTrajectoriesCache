@@ -18,7 +18,7 @@ def calculate_y_line(dataset, y, charges, starting_x, barrel_length, points_simu
         # res = res1 if res2[0] > res1[0] >= 0 else res2
         res = res2
         if res[0] >= 0:
-            dataset.append(((x, y, 0), res))
+            dataset.append((x, y, *res))
             had_result = True
             dont_change_starting = True
         else:

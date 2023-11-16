@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import datashader as ds
 import pandas as pd
 import colorcet as cc
@@ -35,7 +36,7 @@ accuracy = []
 
 print("Repacking data")
 
-for key in data:
+for key in tqdm(data.keys()):
     line = data[key]
 
     x_axis = np.append(x_axis, line[:, 0])
@@ -47,6 +48,8 @@ for key in data:
     accuracy = np.append(accuracy, (1 - line[:, 1]/(line[:, 3]+1e-200)))
 x_axis = x_axis.astype(int)
 
+del data
+
 print("Finished repacking")
 
 min_y = min(y_axis)
@@ -57,11 +60,11 @@ max_x = max(x_axis)
 y_range = max_y - min_y
 x_range = max_x - min_x
 
-figure_width = min(figure_width, x_range)
-figure_height = min(figure_height, y_range)
+#figure_width = min(figure_width, x_range)
+#figure_height = min(figure_height, y_range)
 
-# figure_width = x_range
-# figure_height = y_range
+figure_width = x_range
+figure_height = y_range
 
 print(f"Min y {min(y_axis)} Max y {max(y_axis)} Min x {min(x_axis)} Max x {max(x_axis)}")
 

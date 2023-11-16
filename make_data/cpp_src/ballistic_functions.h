@@ -227,7 +227,7 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
 }
 
 inline double
-calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int32_t charges, double starting_x, double length,
+calculate_y_line(std::vector<std::tuple<int32_t, int32_t, float, float, float>> *dataset, int32_t charges, double starting_x, double length,
                  int *points_simulated, int *y_done, int max_length, int max_simulation_steps,
                  uint32_t impossible_cutoff, float max_delta_t_error, float step, int y,
                  bool count_cutoff_at_the_start, int amin = -30, int amax = 60, float gravity = 0.05, float drag = 0.99,
@@ -240,10 +240,7 @@ calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int3
 //        auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
         auto res = res2;
         if (res[0] >= 0) {
-            dataset->push_back(std::array<std::array<float, 3>, 2>{
-                    std::array<float, 3>{(float) x, (float) y, 0},
-                    res
-            });
+            dataset->push_back({(int32_t)x, (int32_t)y, (float)res[0], (float)res[1], (float)res[2]});
             had_result = true;
             dont_change_starting = true;
         } else {
@@ -259,7 +256,7 @@ calculate_y_line(std::vector<std::array<std::array<float, 3>, 2>> *dataset, int3
 }
 
 auto make_dataset_thread(
-                         std::vector<std::array<std::array<float, 3>, 2>> * dataset,
+        std::vector<std::tuple<int32_t, int32_t, float, float, float>> * dataset,
                          int32_t charges,
                          int length,
                          int max_height_above,
@@ -280,7 +277,6 @@ auto make_dataset_thread(
 
                          uint8_t * done = nullptr
                                  ) {
-    //y level above cannot may not be possible to reach at all, so to prevent simulating whole like cutoff starts early
     dataset->reserve(100000);
 
     if (start_pos == 0) {
@@ -327,7 +323,7 @@ auto make_dataset(
                   ) {
     using namespace std::chrono_literals;
 
-    std::vector<std::vector<std::array<std::array<float, 3>, 2>>> threads_result;
+    std::vector<std::vector<std::tuple<int32_t, int32_t, float, float, float>>> threads_result;
     std::vector<std::pair<int, int>> threads_progress;
     std::vector<std::thread> threads;
     std::vector<uint8_t> done;

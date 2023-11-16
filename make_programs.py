@@ -4,7 +4,6 @@ ROUNDING = 4
 RUNTIME_COMBINE_ITEMS = True
 
 import pickle
-from make_data.interpolate_data import transform_data
 import os
 
 for path in ["compiled/", "compiled/dispatcher", "compiled/shard"]:
@@ -26,8 +25,7 @@ def make_line(line_data, rounding=ROUNDING):
     str_line += str(line_data[0][0]) + ","  # add info about distance offset to first item
 
     for item in line_data:
-        for it in item[1]:
-            str_line += smart_to_str(round(it, rounding)) + ","
+        str_line += smart_to_str(round(item, rounding)) + ","
 
     str_line = str_line[:-1]
     str_line += "},"
@@ -40,9 +38,6 @@ with open("shard.lua", mode="r") as file:
     shard_str = file.read()
 with open("dispatcher.lua", mode="r") as file:
     dispatcher_str = file.read()
-
-print("Transforming data")
-data = transform_data(data, do_interpolate=False)
 
 shard_str = shard_str.replace("REPLACE_THIS_WITH_MODEM_CHANNEL", str(MODEM_CHANNEL))
 shard_str = shard_str.replace("REPLACE_THIS_WITH_HEADER_NAME", HEADER_NAME)
@@ -63,7 +58,7 @@ for key in sorted_keys:
 shard_data = ""
 displacement = abs(list(lines.keys())[0])+1
 
-min_y = list(lines.keys())[0]
+min_y = min(lines.keys())
 boundaries = []
 
 def write_data():

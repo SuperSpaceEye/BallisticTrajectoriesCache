@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import numpy as np
 import gc
 
@@ -47,22 +48,23 @@ def interpolate_line(line):
 
 
 def transform_data(data, do_interpolate=True):
+    print("Collapsing data from threads")
     collapsed_data = []
     for thread_result in data:
         collapsed_data += thread_result
     del data
     gc.collect()
 
+    print("Putting data into map")
     lines = {}
-    for i, it in enumerate(collapsed_data):
-        x, y, _ = it[0]
-        y = int(y)
+    for i, it in tqdm(enumerate(collapsed_data)):
+        y = int(it[1])
 
         if y not in lines:
             lines[y] = []
 
-        lines[y].append((int(x), *it[1]))
-        del collapsed_data[i]
+        lines[y].append((it[0], it[2], it[3], it[4]))
+        #del collapsed_data[i]
 
     if do_interpolate:
         keys = list(lines.keys())
