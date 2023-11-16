@@ -28,7 +28,7 @@ with open("../data", mode="rb") as file:
     data = pickle.load(file)
 
 print("Transforming data")
-data = interpolate_data.transform_data(data, do_interpolate=False)
+data = interpolate_data.transform_data(data)
 
 x_axis = []
 y_axis = []
@@ -50,7 +50,7 @@ for key in data:
         # delta_t.append(math.log(item[1][0], 2))
         pitch.append(item[1][1])
         airtime.append(item[1][2])
-        accuracy.append(1 - item[1][0]/item[1][2])
+        accuracy.append(1 - item[1][0]/(item[1][2]+1e-200))
 
 print("Finished repacking")
 
@@ -62,12 +62,18 @@ max_x = max(x_axis)
 y_range = max_y - min_y
 x_range = max_x - min_x
 
+figure_width = min(figure_width, x_range)
+figure_height = min(figure_height, y_range)
+
+# figure_width = x_range
+# figure_height = y_range
+
 print(f"Min y {min(y_axis)} Max y {max(y_axis)} Min x {min(x_axis)} Max x {max(x_axis)}")
 
-delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), 1200, 600)
-pitch_agg    = make_agg(make_df(x_axis, y_axis, pitch), 1200, 600)
-airtime_agg  = make_agg(make_df(x_axis, y_axis, airtime), 1200, 600)
-accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy), 1200, 600)
+delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), figure_width, figure_height)
+pitch_agg    = make_agg(make_df(x_axis, y_axis, pitch), figure_width, figure_height)
+airtime_agg  = make_agg(make_df(x_axis, y_axis, airtime), figure_width, figure_height)
+accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy), figure_width, figure_height)
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
 

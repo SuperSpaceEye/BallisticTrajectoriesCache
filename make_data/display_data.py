@@ -1,7 +1,7 @@
 try:
-    # raise Exception()
+    # raise RuntimeError()
     import datashader
     import colorcet
     import datashader_display_data
-except:
+except RuntimeError:
     import matplitlib_display_data

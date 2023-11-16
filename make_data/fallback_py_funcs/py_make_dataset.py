@@ -6,7 +6,7 @@ from multiprocessing import Process
 def calculate_y_line(dataset, y, charges, starting_x, barrel_length, points_simulated, y_done, max_length,
                      max_simulation_steps=100000, impossible_cutoff=50, delta_t_max_overshoot=1, step=1,
                      count_cutoff_at_the_start=False, amin=-30, amax=60, gravity=0.05, drag=0.99, num_iterations=5,
-                     num_elements=20, check_impossible=True):
+                     num_elements=20, check_impossible=True,lambertW = False):
     had_result = False
     cutoff_count = 0
     x = starting_x
@@ -65,7 +65,7 @@ def make_dataset(charges, length, max_height_above=256, max_height_below=256,
                  num_threads=16, verbose=True, max_steps=100000, max_length=600,
                  step=1, impossible_cutoff=50, delta_t_max_overshoot=1,
                  amin=-30, amax=60, gravity=0.05, drag=0.99, num_iterations=5, num_elements=20,
-                 check_impossible=True):
+                 check_impossible=True, lambertW = False):
     # m = multiprocessing.Manager()
     # dataset = [m.list() for i in range(num_threads)]
     # threads_progress = [m.list([[0], [0]]) for i in range(num_threads)]

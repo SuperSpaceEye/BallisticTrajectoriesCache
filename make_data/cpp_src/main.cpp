@@ -8,5 +8,5 @@ PYBIND11_MODULE(CannonBallisticFunctions, m) {
     m.def("time_in_air", &by::time_in_air);
     m.def("calculate_pitch", &py_try_pitch);
 
-    m.def("make_dataset", &by::make_dataset<by::calculate_pitch>);
+    m.def("make_dataset", &by::make_dataset);
 }

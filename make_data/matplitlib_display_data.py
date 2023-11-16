@@ -10,7 +10,7 @@ with open("../data", mode="rb") as file:
     data = pickle.load(file)
 
 print("Transforming data")
-data = interpolate_data.transform_data(data, do_interpolate=False)
+data = interpolate_data.transform_data(data)
 
 x_axis = []
 y_axis = []
@@ -31,7 +31,7 @@ for key in data:
         # delta_t.append(math.log(item[1][0], 2))
         pitch.append(item[1][1])
         airtime.append(item[1][2])
-        accuracy.append(1 - item[1][0]/item[1][2])
+        accuracy.append(1 - item[1][0]/(item[1][2]+1e-200))
 print("Finished repacking")
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))

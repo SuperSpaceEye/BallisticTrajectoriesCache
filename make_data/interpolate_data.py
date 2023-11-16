@@ -1,9 +1,9 @@
 import numpy as np
 
 
-def interpolate_line(line):
-    y = line[0][0][1]
-    x_arr = [it[0][0] for it in line]
+def interpolate_line(line, collapse_into_distance, y=0):
+    y = (line[0][0][1] if not collapse_into_distance else y)
+    x_arr = [it[0] for it in line]
     min_x = min(x_arr)
     max_x = max(x_arr)
 
@@ -42,7 +42,7 @@ def interpolate_line(line):
     a3[np.isnan(a3)] = np.interp(x3, xp3, fp3)
 
     newresults = [(i1, i2, i3) for i1, i2, i3 in zip(a1, a2, a3)]
-    newinputs = [(x, y, 0) for x in range(int(x_arr[0]), int(x_arr[0])+length)]
+    newinputs = [(x, y, 0) for x in range(int(x_arr[0]), int(x_arr[0])+length)] if not collapse_into_distance else [x for x in range(int(x_arr[0]), int(x_arr[0])+length)]
 
     newline = [(it1, it2) for it1, it2 in zip(newinputs, newresults)]
 
@@ -69,16 +69,20 @@ def transform_data(data, collapse_into_distance=True, do_interpolate=True):
             lines[y].append((int(np.sqrt(x*x+z*z)), it[1]))
 
     if do_interpolate:
+        keys = list(lines.keys())
+        keys.sort()
         print("Checking for interpolation")
-        for k in lines:
+        for k in keys:
             line = lines[k]
             start = line[0][0][0] if not collapse_into_distance else line[0][0]
             is_cont = True
             for item in line:
-                if start > (item[0][0] if not collapse_into_distance else item[0]):
+                if start+1 < (item[0][0] if not collapse_into_distance else item[0]):
                     is_cont = False
                     print(f"Interpolating line {k}")
+                    break
+                start += 1
             if not is_cont:
-                lines[k] = interpolate_line(lines[k])
+                lines[k] = interpolate_line(lines[k], collapse_into_distance, k)
 
     return lines
