@@ -3,14 +3,10 @@ matplotlib.use("GTK3Agg")
 
 import matplotlib.pyplot as plt
 import pickle
-import interpolate_data
-
+import numpy as np
 print("Loading data")
 with open("../data", mode="rb") as file:
     data = pickle.load(file)
-
-print("Transforming data")
-data = interpolate_data.transform_data(data)
 
 x_axis = []
 y_axis = []
@@ -20,18 +16,18 @@ airtime = []
 accuracy = []
 
 print("Repacking data")
-# for thread_result in data_n:
 for key in data:
     line = data[key]
-    for item in line:
-        x_axis.append(item[0])
-        y_axis.append(int(key))
 
-        delta_t.append(item[1][0])
-        # delta_t.append(math.log(item[1][0], 2))
-        pitch.append(item[1][1])
-        airtime.append(item[1][2])
-        accuracy.append(1 - item[1][0]/(item[1][2]+1e-200))
+    x_axis = np.append(x_axis, line[:, 0])
+    y_axis += [int(key)] * len(line)
+
+    delta_t  = np.append(delta_t, line[:, 1])
+    pitch    = np.append(pitch, line[:, 2])
+    airtime  = np.append(airtime, line[:, 3])
+    accuracy = np.append(accuracy, (1 - line[:, 1]/(line[:, 3]+1e-200)))
+x_axis = x_axis.astype(int)
+
 print("Finished repacking")
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
