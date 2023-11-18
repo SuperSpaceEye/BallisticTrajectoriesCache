@@ -5,6 +5,7 @@ RUNTIME_COMBINE_ITEMS = True
 
 import pickle
 import os
+from tqdm import tqdm
 
 for path in ["compiled/", "compiled/dispatcher", "compiled/shard"]:
     try:os.mkdir(path)
@@ -39,6 +40,7 @@ with open("shard.lua", mode="r") as file:
     shard_str = file.read()
 with open("dispatcher.lua", mode="r") as file:
     dispatcher_str = file.read()
+print("Loaded data")
 
 shard_str = shard_str.replace("REPLACE_THIS_WITH_MODEM_CHANNEL", str(MODEM_CHANNEL))
 shard_str = shard_str.replace("REPLACE_THIS_WITH_HEADER_NAME", HEADER_NAME)
@@ -51,7 +53,7 @@ lines = {}
 sorted_keys = list(data.keys())
 sorted_keys.sort()
 
-for key in sorted_keys:
+for key in tqdm(sorted_keys, desc="Making str lines"):
     item = data[key]
     line = make_line(item)
     lines[key] = line
@@ -72,7 +74,7 @@ def write_data():
     shard_data = ""
 
 print("Starting file creation")
-for key in sorted_keys:
+for key in tqdm(sorted_keys, desc="Writing data"):
     line = lines[key]
 
     if len(shard_str) + len(line) + 2 > max_str_length:

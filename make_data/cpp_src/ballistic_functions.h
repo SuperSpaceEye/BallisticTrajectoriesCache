@@ -21,6 +21,12 @@
 
 #define DESTRUCTURE3(v1, v2, v3, fn) auto t = fn; v1 = t[0]; v2 = t[1]; v3 = t[2];
 
+using ftype = double;
+using item_type = std::tuple<int32_t, int32_t, ftype, ftype, ftype, ftype, ftype, ftype>;
+using thread_dataset_type = std::vector<item_type>;
+using pitch_fn_return_type = std::pair<std::array<ftype, 3>, std::array<ftype, 3>>;
+#define PITCH_FN_ARGS std::array<ftype, 3>, std::array<ftype, 3>
+
 namespace BallisticFunctions {
 
 inline auto range(int start, int end, int step=1) {
@@ -33,11 +39,11 @@ inline auto range(int start, int end, int step=1) {
     return range;
 }
 
-inline std::vector<float> flinspace(float start, float stop, int num_elements, float min, float max) {
-    return linspace<float>(std::max(start, min), std::min(stop, max), num_elements);
+inline std::vector<ftype> flinspace(ftype start, ftype stop, int num_elements, ftype min, ftype max) {
+    return linspace<ftype>(std::max(start, min), std::min(stop, max), num_elements);
 }
 
-std::array<float, 3> get_root(const std::vector<std::array<float, 3>> & data,
+std::array<ftype, 3> get_root(const std::vector<std::array<ftype, 3>> & data,
                               bool from_end) {
     if (from_end) {
         for (int i = data.size()-2; i >= 0; i--) {
@@ -53,13 +59,13 @@ std::array<float, 3> get_root(const std::vector<std::array<float, 3>> & data,
 }
 
 //calculates time when it goes above and then below target y pos.
-inline std::pair<int64_t, int64_t> time_in_air(float y0, float y, float Vy,
-                                               float gravity = 0.05, float drag=0.99, int32_t max_steps = 100000) {
+inline std::pair<double, double> time_in_air(ftype y0, ftype y, ftype Vy,
+                                             ftype gravity = 0.05, ftype drag=0.99, int32_t max_steps = 100000) {
     int64_t t = 0;
     int64_t t_below = INT64_MAX;
 
     if (y0 < y) {
-        float y0_p;
+        ftype y0_p;
         while (t < max_steps) {
             y0_p = y0;
             y0 += Vy;
@@ -89,8 +95,8 @@ inline std::pair<int64_t, int64_t> time_in_air(float y0, float y, float Vy,
     return {t_below, -1};
 }
 
-inline std::pair<int64_t, int64_t> time_in_air_lambertw(float y0, float y, float Vy,
-                               float gravity = 0.05, float drag=0.99) {
+inline std::pair<double, double> time_in_air_lambertw(ftype y0, ftype y, ftype Vy,
+                                                      ftype gravity = 0.05, ftype drag=0.99) {
     auto delta = (20 * Vy + 100) * (std::pow(drag, (20 * Vy + 100 + 0.20 * (y0 - y))));
 
     auto top0 = -utl::LambertW<0>(delta * std::log(drag));
@@ -104,23 +110,23 @@ inline std::pair<int64_t, int64_t> time_in_air_lambertw(float y0, float y, float
 
 inline double rad(auto deg) {return deg * (M_PI / 180);}
 
-inline std::pair<std::array<float, 3>, bool>
-try_pitch(float pitch_to_try,
-          int32_t initial_speed,
-          int32_t length,
-          float distance,
-          const std::array<float, 3> &cannon,
-          const std::array<float, 3> &target,
-          float gravity = 0.05,
-          float drag = 0.99,
+inline std::pair<std::array<ftype, 3>, bool>
+try_pitch(ftype pitch_to_try,
+          ftype initial_speed,
+          ftype length,
+          ftype distance,
+          const std::array<ftype, 3> &cannon,
+          const std::array<ftype, 3> &target,
+          ftype gravity = 0.05,
+          ftype drag = 0.99,
           int32_t max_steps = 1000000,
           bool lambertW=false) {
-    float tp_rad = rad(pitch_to_try);
+    ftype tp_rad = rad(pitch_to_try);
 
     auto Vw = std::cos(tp_rad) * initial_speed;
     auto Vy = std::sin(tp_rad) * initial_speed;
 
-    float x_coord_2d = length * std::cos(tp_rad);
+    ftype x_coord_2d = length * std::cos(tp_rad);
 
     double horizontal_time_to_target;
     if (drag < 1.0) {
@@ -132,7 +138,7 @@ try_pitch(float pitch_to_try,
         horizontal_time_to_target = distance / Vw;
     }
 
-    float y_coord_end_of_barrel = cannon[1] + std::sin(tp_rad) * length;
+    ftype y_coord_end_of_barrel = cannon[1] + std::sin(tp_rad) * length;
 
     int64_t t_below, t_above;
     if (lambertW) {
@@ -151,23 +157,23 @@ try_pitch(float pitch_to_try,
             std::abs(horizontal_time_to_target-t_above)
             );
 
-    return {{(float)delta_t, pitch_to_try, (float)(delta_t + horizontal_time_to_target)}, true};
+    return {{(ftype)delta_t, pitch_to_try, (ftype)(delta_t + horizontal_time_to_target)}, true};
 }
 
 template<typename A>
-inline std::vector<std::array<float, 3>> try_pitches(
+inline std::vector<std::array<ftype, 3>> try_pitches(
         A iter,
-        int32_t initial_speed,
-        int32_t length,
-        float distance,
-        const std::array<float, 3> &cannon,
-        const std::array<float, 3> &target,
-        float gravity = 0.05,
-        float drag = 0.99,
+        ftype initial_speed,
+        ftype length,
+        ftype distance,
+        const std::array<ftype, 3> &cannon,
+        const std::array<ftype, 3> &target,
+        ftype gravity = 0.05,
+        ftype drag = 0.99,
         int32_t max_steps=1000000,
         bool lambertW = false
         ) {
-    std::vector<std::array<float, 3>> delta_times{};
+    std::vector<std::array<ftype, 3>> delta_times{};
     delta_times.reserve(20);//preallocate some
     for (auto item: iter) {
         auto [items, is_successful] = try_pitch(item, initial_speed, length, distance, cannon, target, gravity, drag, max_steps, lambertW);
@@ -177,16 +183,16 @@ inline std::vector<std::array<float, 3>> try_pitches(
     return delta_times;
 }
 
-inline std::array<float, 3> min_array(const std::vector<std::array<float, 3>> & vec) {
+inline std::array<ftype, 3> min_array(const std::vector<std::array<ftype, 3>> & vec) {
     return *std::min_element(vec.begin(), vec.end(),
                              [](const auto & a, const auto & b){return a[0] < b[0];});
 }
 
-inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
-        const std::array<float, 3> &cannon,
-        const std::array<float, 3> &target,
-        int32_t initial_speed, int32_t length, int amin = -30, int amax = 60, float gravity = 0.05, float drag = 0.99,
-        float max_delta_t_error = 1, int32_t max_steps=100000,
+inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> calculate_pitch(
+        const std::array<ftype, 3> &cannon,
+        const std::array<ftype, 3> &target,
+        ftype initial_speed, ftype length, int amin = -30, int amax = 60, ftype gravity = 0.05, ftype drag = 0.99,
+        ftype max_delta_t_error = 1, int32_t max_steps=100000,
         int num_iterations = 5, int num_elements = 20, bool check_impossible = true, bool lambertW = false) {
     auto Dx = cannon[0] - target[0];
     auto Dz = cannon[2] - target[2];
@@ -202,7 +208,7 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
     bool c2= p1 != p2;
     bool same_res = p1 == p2;
 
-    std::vector<std::array<float, 3>> dTs1, dTs2;
+    std::vector<std::array<ftype, 3>> dTs1, dTs2;
 
     for (int i = 0; i < num_iterations; i++) {
         if (c1) { dTs1 = try_pitches(flinspace(p1-std::pow(10.,-i), p1+std::pow(10.,-i), num_elements, amin, amax), initial_speed, length, distance, cannon, target, gravity, drag, max_steps, lambertW);}
@@ -219,28 +225,158 @@ inline std::pair<std::array<float, 3>, std::array<float, 3>> calculate_pitch(
 
     if (same_res) {dT2 = dT1; p2 = p1; at2 = at1;}
 
-    std::array<float, 3> r1 = {dT1, p1, at1}, r2 = {dT2, p2, at2};
+    std::array<ftype, 3> r1 = {dT1, p1, at1}, r2 = {dT2, p2, at2};
     if (check_impossible && dT1 > max_delta_t_error) { r1 = {-1, -1, -1};}
     if (check_impossible && dT2 > max_delta_t_error) { r2 = {-1, -1, -1};}
 
-    return std::pair<std::array<float, 3>, std::array<float, 3>> {r1, r2};
+    return std::pair<std::array<ftype, 3>, std::array<ftype, 3>> {r1, r2};
+}
+
+inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
+        ftype x_r, ftype h, ftype v_m, ftype L, ftype g, ftype c_d,
+
+        ftype mult_coeff = 0.25, ftype acceptable_error_range = 0.01,
+        ftype starting_from_t = 0, ftype max_mult_depth = 8,
+        ftype starting_multiplier = 2, ftype starting_max_depth = 32
+        ) {
+
+    const auto u = v_m/20.0;
+
+    const auto A = (g * c_d) / (u * (1 - c_d));
+    const auto C = (L/(u*x_r)) * ((g*c_d)/(1-c_d)) + h/x_r;
+    const auto B = [g, c_d, x_r](double t){ return t * (g * c_d) / (1 - c_d) * (1 / x_r);};
+
+    const auto a_r = [A, B, C](double t){
+        const auto B_ = B(t);
+        const auto part = -A*A + B_*B_ + C*C + 2*B_*C + 1;
+        if (part < 0) {return -1e+101;}
+
+        return 2 * std::atan(
+                (std::sqrt(part) - 1)
+                / (A + B_ + C)
+                );
+    };
+
+    const auto x_r1 = [a_r, u, c_d, L](double t){
+        const auto a_rr = a_r(t);
+        if (a_rr < -1e+100) {return a_rr;}
+        return (u * std::cos(a_rr)) / std::log(c_d) * (std::pow(c_d, t) - 1) + L * std::cos(a_rr);
+    };
+
+    const auto get_starting = [starting_from_t, x_r1, starting_multiplier, starting_max_depth](){
+        const auto s_t = starting_from_t;
+        auto res = x_r1(s_t);
+
+        double p = 1;
+        double depth = 0;
+        while (res < -1e+100) {
+            res = x_r1(s_t + p);
+            p *= starting_multiplier;
+
+            depth += 1;
+            if (depth > starting_max_depth) { throw std::runtime_error("Depth exceeds allowed"); }
+        }
+        return s_t + p;
+    };
+
+    auto s_t = get_starting();
+
+    auto s_xr = x_r1(s_t);
+    auto s1_xr = x_r1(s_t+1);
+
+    auto find_solution = [s_xr, max_mult_depth, x_r1, x_r, mult_coeff, acceptable_error_range, a_r](double s_t, bool inverse, const std::function<bool(double, double)>& comp){
+        auto p_xr = s_xr;
+        int c_t = 1 * (inverse ? -1 : 1);
+        double mult = 2;
+        int depth = 0;
+        while (true) {
+            if (depth > max_mult_depth) { return std::array<ftype, 3> {-1, -1, -1}; }
+
+            auto n_t = c_t * mult;
+            auto n_xr = x_r1(n_t + s_t);
+
+            if (n_xr < x_r && comp(p_xr, n_xr)) { return std::array<ftype, 3> {-1, -1, -1}; }
+
+            if (comp(n_xr, x_r)) {
+                mult *= mult_coeff;
+                depth++;
+                continue;
+            }
+
+            if (std::abs(n_xr - x_r) <= acceptable_error_range) {
+                return std::array<ftype, 3> {(ftype)(std::abs(n_xr - x_r)), (ftype)a_r(n_t+s_t), (ftype)(n_t+s_t)};
+            }
+
+            s_t += n_t;
+            p_xr = n_xr;
+        }
+    };
+
+    std::tuple<double, bool, std::function<bool(double, double)>, bool> args1, args2;
+
+    if (s_xr < x_r && s1_xr - s_xr >= 0) {args1 = {s_t, false, [](double a, double b){return a > b;}, true }; args2 = args1 = {s_t, false, [](double a, double b){return a < b;}, true};}
+    if (s_xr < x_r && s1_xr - s_xr <  0) {args1 = {s_t, true,  [](double a, double b){return a > b;}, true }; args2 = args1 = {s_t, true,  [](double a, double b){return a < b;}, true};}
+    if (s_xr > x_r && s1_xr - s_xr >= 0) {args1 = {s_t, true,  [](double a, double b){return a < b;}, false}; args2 = args1 = {s_t, false, [](double a, double b){return a < b;}, true};}
+    if (s_xr > x_r && s1_xr - s_xr <  0) {args1 = {s_t, false, [](double a, double b){return a < b;}, false}; args2 = args1 = {s_t, true,  [](double a, double b){return a < b;}, true};}
+
+    auto first_solution = find_solution(get<0>(args1), get<1>(args1), get<2>(args1));
+
+    if (first_solution[0] >= 0 and get<3>(args1)) {
+        s_t = first_solution[0] + (acceptable_error_range * 2 * (get<1>(args2) ? -1 : 1));
+    }
+
+    auto second_solution = find_solution(s_t, get<1>(args2), get<2>(args2));
+
+    return {first_solution, second_solution};
+}
+
+inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> calculate_pitch_Endal(
+        const std::array<ftype, 3> &cannon,
+        const std::array<ftype, 3> &target,
+        double initial_speed, double length, ftype gravity, ftype drag,
+        ftype amin, ftype amax,
+        ftype mult_coeff, ftype acceptable_error_range,
+        ftype starting_from_t, ftype max_mult_depth,
+        ftype starting_multiplier, ftype starting_max_depth
+        ) {
+    auto Dx = cannon[0] - target[0];
+    auto Dz = cannon[2] - target[2];
+    auto x_r = std::sqrt(Dx * Dx + Dz * Dz);
+
+    auto h = target[1] - cannon[1];
+
+    auto [s1, s2] = solve_with_Endal(x_r, h, initial_speed*20, length, gravity, drag, mult_coeff, acceptable_error_range, starting_from_t, max_mult_depth, starting_multiplier, starting_max_depth);
+
+    if (s1[1] > rad(amax) || s1[1] < rad(amin)) {s1 = {-1, -1, -1};}
+    if (s2[1] > rad(amax) || s2[1] < rad(amin)) {s2 = {-1, -1, -1};}
+
+    return {s1, s2};
 }
 
 inline double
-calculate_y_line(std::vector<std::tuple<int32_t, int32_t, float, float, float>> *dataset, int32_t charges, double starting_x, double length,
-                 int *points_simulated, int *y_done, int max_length, int max_simulation_steps,
-                 uint32_t impossible_cutoff, float max_delta_t_error, float step, int y,
-                 bool count_cutoff_at_the_start, int amin = -30, int amax = 60, float gravity = 0.05, float drag = 0.99,
-                 int num_iterations = 5, int num_elements = 20, bool check_impossible = true, bool lambertW = true) {
+calculate_y_line(const std::function<pitch_fn_return_type(PITCH_FN_ARGS)>& pitch_fn,
+        thread_dataset_type *dataset, double starting_x, int *points_simulated, int *y_done,
+         int max_length,uint32_t impossible_cutoff, ftype step, int y, bool count_cutoff_at_the_start) {
     bool had_result = false;
     int cutoff_count = 0;
     bool dont_change_starting = false;
     for (double x = starting_x; x < max_length; x += step) {
-        auto [res1, res2] = calculate_pitch({0, 0, 0}, {(float)x, (float)y, 0}, charges, length, amin, amax, gravity, drag, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible, lambertW);
-//        auto res = ((res1[0] < res2[0]) && (res1[0] >= 0)) ? res1 : res2;
-        auto res = res2;
-        if (res[0] >= 0) {
-            dataset->push_back({(int32_t)x, (int32_t)y, (float)res[0], (float)res[1], (float)res[2]});
+//        auto [res1, res2] = calculate_pitch({0, 0, 0}, {(ftype)x, (ftype)y, 0}, charges, length, amin, amax, gravity, drag, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible, lambertW);
+        auto [res1, res2] = pitch_fn({0, 0, 0}, {(ftype)x, (ftype)y, 0});
+
+        if (res2[0] >= 0 && res1[0] < 0) {std::swap(res1, res2);}
+        if (res1[0] >= 0 && res2[0] >= 0) {
+            if (res1[1] < res2[1]) {
+                std::swap(res1, res2);
+            }
+        }
+
+        if (res1[0] >= 0 || res2[0] >= 0) {
+            dataset->push_back(
+               {(int32_t) x, (int32_t) y,
+                (ftype) res1[0], (ftype) res1[1], (ftype) res1[2],
+                (ftype) res2[0], (ftype) res2[1], (ftype) res2[2]
+                });
             had_result = true;
             dont_change_starting = true;
         } else {
@@ -248,7 +384,8 @@ calculate_y_line(std::vector<std::tuple<int32_t, int32_t, float, float, float>> 
         }
         (*points_simulated)++;
 
-        if ((had_result || count_cutoff_at_the_start) && res[0] < 0) {cutoff_count++;} else { cutoff_count = 0;}
+        if ((had_result || count_cutoff_at_the_start)
+        && (res1[0] < 0 && res2[0] < 0)) {cutoff_count++;} else { cutoff_count = 0;}
         if (cutoff_count >= impossible_cutoff) { break;}
         }
     (*y_done)++;
@@ -256,74 +393,56 @@ calculate_y_line(std::vector<std::tuple<int32_t, int32_t, float, float, float>> 
 }
 
 auto make_dataset_thread(
-        std::vector<std::tuple<int32_t, int32_t, float, float, float>> * dataset,
-                         int32_t charges,
-                         int length,
-                         int max_height_above,
-                         int max_height_below,
-                         int start_pos,
-                         int num_threads,
-                         int * points_simulated,
-                         int * y_done,
-                         int max_simulation_steps,
-                         int max_length,
-                         uint32_t impossible_cutoff,
-                         float max_delta_t_error,
-                         float step = 1,
-                         int amin=-30, int amax=60, float gravity = 0.05, float drag = 0.99,
-                         int num_iterations=5, int num_elements=20,
-                         bool check_impossible=true,
-                         bool lambertW = false,
+        const std::function<pitch_fn_return_type(PITCH_FN_ARGS)>& pitch_fn,
+        thread_dataset_type * dataset,
+        int max_height_above,
+        int max_height_below,
+        int start_pos,
+        int num_threads,
+        int * points_simulated,
+        int * y_done,
+        int max_length,
+        int length,
+        uint32_t impossible_cutoff,
+        ftype step = 1,
 
-                         uint8_t * done = nullptr
-                                 ) {
+        uint8_t * done = nullptr
+                ) {
     dataset->reserve(100000);
 
     if (start_pos == 0) {
-    calculate_y_line(dataset, charges, length, length, points_simulated, y_done, max_length, max_simulation_steps,
-                               impossible_cutoff, max_delta_t_error,
-                               step, 0, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible, lambertW);
+        calculate_y_line(pitch_fn, dataset, 0, points_simulated, y_done, max_length, impossible_cutoff, step, 0, true);
     }
 
     double starting_x = length;
     for (int y = start_pos+1; y < max_height_above; y+=num_threads) {
-        starting_x = calculate_y_line(dataset, charges, starting_x, length, points_simulated, y_done, max_length, max_simulation_steps,
-                                   impossible_cutoff, max_delta_t_error,
-                                   step, y, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible, lambertW);
+        starting_x = calculate_y_line(pitch_fn, dataset, starting_x, points_simulated, y_done, max_length, impossible_cutoff, step, y, true);
     }
 
     starting_x = length;
     //y levels below cannon meanwhile can always be hit at some point, so just simulate until it hits a reachable point
     // and only then start calculating cutoff
     for (int y = start_pos-1; y > -max_height_below; y-=num_threads) {
-        starting_x = calculate_y_line(dataset, charges, starting_x, length, points_simulated, y_done, max_length, max_simulation_steps,
-                                   impossible_cutoff, max_delta_t_error,
-                                   step, y, true, amin, amax, gravity, drag, num_iterations, num_elements, check_impossible, lambertW);
+        starting_x = calculate_y_line(pitch_fn, dataset, starting_x, points_simulated, y_done, max_length, impossible_cutoff, step, y, true);
     }
 
     *done = true;
 }
 
 auto make_dataset(
-                  int32_t charges,
-                  int length,
-                  int max_height_above = 256,
-                  int max_height_below = 256,
-                  int num_threads=16,
-                  bool verbose=true,
-                  int max_steps=100000,
-                  int max_length=600,
-                  float step=1,
-                  uint32_t impossible_cutoff = 50,
-                  float max_delta_t_error = 1,
-                  int amin=-30, int amax=60, float gravity=0.05, float drag = 0.99,
-                  int num_iterations=5, int num_elements=20,
-                  bool check_impossible=true,
-                  bool lambertW = false
-                  ) {
+        const std::function<pitch_fn_return_type(PITCH_FN_ARGS)>& pitch_fn,
+        ftype length,
+        int max_height_above = 256,
+        int max_height_below = 256,
+        int num_threads=16,
+        bool verbose=true,
+        int max_length=600,
+        float step=1,
+        uint32_t impossible_cutoff = 50
+        ) {
     using namespace std::chrono_literals;
 
-    std::vector<std::vector<std::tuple<int32_t, int32_t, float, float, float>>> threads_result;
+    std::vector<thread_dataset_type> threads_result;
     std::vector<std::pair<int, int>> threads_progress;
     std::vector<std::thread> threads;
     std::vector<uint8_t> done;
@@ -336,17 +455,17 @@ auto make_dataset(
     for (int i = 0; i < num_threads; i++) {
         threads[i] = std::thread(
                 make_dataset_thread,
+                pitch_fn,
                 &threads_result[i],
-                charges, length, max_height_above,
-                max_height_below, i, num_threads,
+                max_height_above,
+                max_height_below, i,
+                num_threads,
                 &threads_progress[i].first,
                 &threads_progress[i].second,
-                max_steps,
                 max_length,
+                length,
                 impossible_cutoff,
-                max_delta_t_error,
                 step,
-                amin, amax, gravity, drag, num_iterations, num_elements, check_impossible, lambertW,
                 &done[i]
         );
 

@@ -1,6 +1,5 @@
 pybind11~=2.10.4
 numpy~=1.23.5
 matplotlib~=3.6.3
-cannonballisticfunctions~=0.0.1
 datashader~=0.15.2
 colorcet~=3.0.1

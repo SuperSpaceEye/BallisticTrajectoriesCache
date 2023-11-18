@@ -24,7 +24,7 @@ cmap = cc.cm["fire"].copy()
 cmap.set_bad(cmap.get_under())  # set the color for 0
 
 print("Loading data")
-with open("../data", mode="rb") as file:
+with open("../data_endal", mode="rb") as file:
     data = pickle.load(file)
 
 x_axis = []
@@ -60,30 +60,31 @@ max_x = max(x_axis)
 y_range = max_y - min_y
 x_range = max_x - min_x
 
-#figure_width = min(figure_width, x_range)
-#figure_height = min(figure_height, y_range)
+figure_width = min(figure_width, x_range)
+figure_height = min(figure_height, y_range)
 
-figure_width = x_range
-figure_height = y_range
+# figure_width = x_range
+# figure_height = y_range
 
 print(f"Min y {min(y_axis)} Max y {max(y_axis)} Min x {min(x_axis)} Max x {max(x_axis)}")
+print(f"Min pitch {min(pitch)} Max pitch {max(pitch)} | Min airtime {min(airtime)} Max airtime {max(airtime)}")
 
-delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), figure_width, figure_height)
+# delta_t_agg  = make_agg(make_df(x_axis, y_axis, delta_t), figure_width, figure_height)
 pitch_agg    = make_agg(make_df(x_axis, y_axis, pitch), figure_width, figure_height)
 airtime_agg  = make_agg(make_df(x_axis, y_axis, airtime), figure_width, figure_height)
-accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy), figure_width, figure_height)
+# accuracy_agg = make_agg(make_df(x_axis, y_axis, accuracy), figure_width, figure_height)
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
 
-ax[0, 0].title.set_text("delta_t")
+# ax[0, 0].title.set_text("delta_t")
 ax[0, 1].title.set_text("pitch")
 ax[1, 0].title.set_text("airtime")
-ax[1, 1].title.set_text("accuracy")
+# ax[1, 1].title.set_text("accuracy")
 
-sc1 = ax[0, 0].imshow(ds.tf.set_background(ds.tf.shade(delta_t_agg, cmap=cc.bmy), "white").to_pil())
+# sc1 = ax[0, 0].imshow(ds.tf.set_background(ds.tf.shade(delta_t_agg, cmap=cc.bmy), "white").to_pil())
 sc2 = ax[0, 1].imshow(ds.tf.set_background(ds.tf.shade(pitch_agg, cmap=cc.bmy), "white").to_pil())
 sc3 = ax[1, 0].imshow(ds.tf.set_background(ds.tf.shade(airtime_agg, cmap=cc.bmy), "white").to_pil())
-sc4 = ax[1, 1].imshow(ds.tf.set_background(ds.tf.shade(accuracy_agg, cmap=cc.bmy), "white").to_pil())
+# sc4 = ax[1, 1].imshow(ds.tf.set_background(ds.tf.shade(accuracy_agg, cmap=cc.bmy), "white").to_pil())
 
 def make_x_labels(labels):
     return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(min_x, max_x, len(labels)-1)))
