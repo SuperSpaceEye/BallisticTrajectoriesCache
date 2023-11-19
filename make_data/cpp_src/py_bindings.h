@@ -7,6 +7,7 @@
 
 #include "ballistic_functions.h"
 #include <pybind11/stl.h>
+#include <iostream>
 
 inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>>
 py_calculate_pitch_iterative(

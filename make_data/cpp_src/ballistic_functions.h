@@ -21,7 +21,7 @@
 
 #define DESTRUCTURE3(v1, v2, v3, fn) auto t = fn; v1 = t[0]; v2 = t[1]; v3 = t[2];
 
-using ftype = double;
+using ftype = float;
 using item_type = std::tuple<int32_t, int32_t, ftype, ftype, ftype, ftype, ftype, ftype>;
 using thread_dataset_type = std::vector<item_type>;
 using pitch_fn_return_type = std::pair<std::array<ftype, 3>, std::array<ftype, 3>>;
@@ -244,9 +244,9 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
 
     const auto A = (g * c_d) / (u * (1 - c_d));
     const auto C = (L/(u*x_r)) * ((g*c_d)/(1-c_d)) + h/x_r;
-    const auto B = [g, c_d, x_r](double t){ return t * (g * c_d) / (1 - c_d) * (1 / x_r);};
+    const auto B = [g, c_d, x_r](ftype t){ return t * (g * c_d) / (1 - c_d) * (1 / x_r);};
 
-    const auto a_r = [A, B, C](double t){
+    const auto a_r = [A, B, C](ftype t){
         const auto B_ = B(t);
         const auto part = -A*A + B_*B_ + C*C + 2*B_*C + 1;
         if (part < 0) {return -1e+101;}
@@ -257,7 +257,7 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
                 );
     };
 
-    const auto x_r1 = [a_r, u, c_d, L](double t){
+    const auto x_r1 = [a_r, u, c_d, L](ftype t){
         const auto a_rr = a_r(t);
         if (a_rr < -1e+100) {return a_rr;}
         return (u * std::cos(a_rr)) / std::log(c_d) * (std::pow(c_d, t) - 1) + L * std::cos(a_rr);
@@ -265,10 +265,10 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
 
     const auto get_starting = [starting_from_t, x_r1, starting_multiplier, starting_max_depth](){
         const auto s_t = starting_from_t;
-        auto res = x_r1(s_t);
+        ftype res = x_r1(s_t);
 
-        double p = 1;
-        double depth = 0;
+        ftype p = 1;
+        ftype depth = 0;
         while (res < -1e+100) {
             res = x_r1(s_t + p);
             p *= starting_multiplier;
@@ -279,18 +279,22 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
         return s_t + p;
     };
 
-    auto s_t = get_starting();
+    ftype s_t = get_starting();
 
-    auto s_xr = x_r1(s_t);
-    auto s1_xr = x_r1(s_t+1);
+    ftype s_xr = x_r1(s_t);
+    ftype s1_xr = x_r1(s_t+1);
 
-    auto find_solution = [s_xr, max_mult_depth, x_r1, x_r, mult_coeff, acceptable_error_range, a_r](double s_t, bool inverse, const std::function<bool(double, double)>& comp){
-        auto p_xr = s_xr;
-        int c_t = 1 * (inverse ? -1 : 1);
-        double mult = 2;
+    auto find_solution = [s_xr, max_mult_depth, x_r1, x_r, mult_coeff, acceptable_error_range, a_r](ftype s_t, bool inverse, bool comp_flag){
+        ftype p_xr = s_xr;
+        ftype c_t = 1 * (inverse ? -1 : 1);
+        ftype mult = 2;
         int depth = 0;
+        int additions = 0;
+
+        auto comp = (comp_flag ? [](ftype a, ftype b){return a > b;} : [](ftype a, ftype b){return a < b;});
         while (true) {
             if (depth > max_mult_depth) { return std::array<ftype, 3> {-1, -1, -1}; }
+            if (additions > 100) { return std::array<ftype, 3> {-1, -1, -1}; }
 
             auto n_t = c_t * mult;
             auto n_xr = x_r1(n_t + s_t);
@@ -300,6 +304,7 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
             if (comp(n_xr, x_r)) {
                 mult *= mult_coeff;
                 depth++;
+                additions = 0;
                 continue;
             }
 
@@ -309,15 +314,16 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
 
             s_t += n_t;
             p_xr = n_xr;
+
+            additions++;
         }
     };
 
-    std::tuple<double, bool, std::function<bool(double, double)>, bool> args1, args2;
-
-    if (s_xr < x_r && s1_xr - s_xr >= 0) {args1 = {s_t, false, [](double a, double b){return a > b;}, true }; args2 = args1 = {s_t, false, [](double a, double b){return a < b;}, true};}
-    if (s_xr < x_r && s1_xr - s_xr <  0) {args1 = {s_t, true,  [](double a, double b){return a > b;}, true }; args2 = args1 = {s_t, true,  [](double a, double b){return a < b;}, true};}
-    if (s_xr > x_r && s1_xr - s_xr >= 0) {args1 = {s_t, true,  [](double a, double b){return a < b;}, false}; args2 = args1 = {s_t, false, [](double a, double b){return a < b;}, true};}
-    if (s_xr > x_r && s1_xr - s_xr <  0) {args1 = {s_t, false, [](double a, double b){return a < b;}, false}; args2 = args1 = {s_t, true,  [](double a, double b){return a < b;}, true};}
+    std::tuple<ftype, bool, bool, bool> args1, args2;
+    if (s_xr < x_r && s1_xr - s_xr >= 0) {args1 = {s_t, false, true,  true }; args2 = args1 = {s_t, false, false, true}; }
+    if (s_xr < x_r && s1_xr - s_xr <  0) {args1 = {s_t, true,  true,  true }; args2 = args1 = {s_t, true,  false, true}; }
+    if (s_xr > x_r && s1_xr - s_xr >= 0) {args1 = {s_t, true,  false, false}; args2 = args1 = {s_t, false, false, true}; }
+    if (s_xr > x_r && s1_xr - s_xr <  0) {args1 = {s_t, false, false, false}; args2 = args1 = {s_t, true,  false, true}; }
 
     auto first_solution = find_solution(get<0>(args1), get<1>(args1), get<2>(args1));
 
@@ -333,7 +339,7 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
 inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> calculate_pitch_Endal(
         const std::array<ftype, 3> &cannon,
         const std::array<ftype, 3> &target,
-        double initial_speed, double length, ftype gravity, ftype drag,
+        ftype initial_speed, ftype length, ftype gravity, ftype drag,
         ftype amin, ftype amax,
         ftype mult_coeff, ftype acceptable_error_range,
         ftype starting_from_t, ftype max_mult_depth,
@@ -361,7 +367,6 @@ calculate_y_line(const std::function<pitch_fn_return_type(PITCH_FN_ARGS)>& pitch
     int cutoff_count = 0;
     bool dont_change_starting = false;
     for (double x = starting_x; x < max_length; x += step) {
-//        auto [res1, res2] = calculate_pitch({0, 0, 0}, {(ftype)x, (ftype)y, 0}, charges, length, amin, amax, gravity, drag, max_delta_t_error, max_simulation_steps, num_iterations, num_elements, check_impossible, lambertW);
         auto [res1, res2] = pitch_fn({0, 0, 0}, {(ftype)x, (ftype)y, 0});
 
         if (res2[0] >= 0 && res1[0] < 0) {std::swap(res1, res2);}
