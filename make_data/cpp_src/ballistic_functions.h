@@ -289,12 +289,10 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
         ftype c_t = 1 * (inverse ? -1 : 1);
         ftype mult = 2;
         int depth = 0;
-        int additions = 0;
 
         auto comp = (comp_flag ? [](ftype a, ftype b){return a > b;} : [](ftype a, ftype b){return a < b;});
         while (true) {
             if (depth > max_mult_depth) { return std::array<ftype, 3> {-1, -1, -1}; }
-            if (additions > 100) { return std::array<ftype, 3> {-1, -1, -1}; }
 
             auto n_t = c_t * mult;
             auto n_xr = x_r1(n_t + s_t);
@@ -304,31 +302,29 @@ inline std::pair<std::array<ftype, 3>, std::array<ftype, 3>> solve_with_Endal(
             if (comp(n_xr, x_r)) {
                 mult *= mult_coeff;
                 depth++;
-                additions = 0;
                 continue;
             }
 
             if (std::abs(n_xr - x_r) <= acceptable_error_range) {
+                if (n_t + s_t < 0) {return std::array<ftype, 3> {-1, -1, -1};}
                 return std::array<ftype, 3> {(ftype)(std::abs(n_xr - x_r)), (ftype)a_r(n_t+s_t), (ftype)(n_t+s_t)};
             }
 
             s_t += n_t;
             p_xr = n_xr;
-
-            additions++;
         }
     };
 
     std::tuple<ftype, bool, bool, bool> args1, args2;
-    if (s_xr < x_r && s1_xr - s_xr >= 0) {args1 = {s_t, false, true,  true }; args2 = args1 = {s_t, false, false, true}; }
-    if (s_xr < x_r && s1_xr - s_xr <  0) {args1 = {s_t, true,  true,  true }; args2 = args1 = {s_t, true,  false, true}; }
-    if (s_xr > x_r && s1_xr - s_xr >= 0) {args1 = {s_t, true,  false, false}; args2 = args1 = {s_t, false, false, true}; }
-    if (s_xr > x_r && s1_xr - s_xr <  0) {args1 = {s_t, false, false, false}; args2 = args1 = {s_t, true,  false, true}; }
+    if (s_xr < x_r && s1_xr - s_xr >= 0) {args1 = {s_t, false, true,  true }; args2 = {s_t, false, false, true}; }
+    if (s_xr < x_r && s1_xr - s_xr <  0) {args1 = {s_t, true,  true,  true }; args2 = {s_t, true,  false, true}; }
+    if (s_xr > x_r && s1_xr - s_xr >= 0) {args1 = {s_t, true,  false, false}; args2 = {s_t, false, false, true}; }
+    if (s_xr > x_r && s1_xr - s_xr <  0) {args1 = {s_t, false, false, false}; args2 = {s_t, true,  false, true}; }
 
     auto first_solution = find_solution(get<0>(args1), get<1>(args1), get<2>(args1));
 
     if (first_solution[0] >= 0 and get<3>(args1)) {
-        s_t = first_solution[0] + (acceptable_error_range * 2 * (get<1>(args2) ? -1 : 1));
+        s_t = first_solution[2] + (acceptable_error_range * 2 * (get<1>(args2) ? -1 : 1));
     }
 
     auto second_solution = find_solution(s_t, get<1>(args2), get<2>(args2));
@@ -366,15 +362,16 @@ calculate_y_line(const std::function<pitch_fn_return_type(PITCH_FN_ARGS)>& pitch
     bool had_result = false;
     int cutoff_count = 0;
     bool dont_change_starting = false;
+    if (starting_x == 0) { starting_x = 1; }
     for (double x = starting_x; x < max_length; x += step) {
         auto [res1, res2] = pitch_fn({0, 0, 0}, {(ftype)x, (ftype)y, 0});
 
-        if (res2[0] >= 0 && res1[0] < 0) {std::swap(res1, res2);}
-        if (res1[0] >= 0 && res2[0] >= 0) {
-            if (res1[1] < res2[1]) {
-                std::swap(res1, res2);
-            }
-        }
+//        if (res2[0] >= 0 && res1[0] < 0) {std::swap(res1, res2);}
+//        if (res1[0] >= 0 && res2[0] >= 0) {
+//            if (res1[2] > res2[2]) {
+//                std::swap(res1, res2);
+//            }
+//        }
 
         if (res1[0] >= 0 || res2[0] >= 0) {
             dataset->push_back(

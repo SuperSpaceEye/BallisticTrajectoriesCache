@@ -1,11 +1,12 @@
 try:
-    from CannonBallisticFunctions import make_dataset_iterative, make_dataset_endals
+    from CannonBallisticFunctions import make_dataset_iterative, make_dataset_endals, calculate_pitch_Endal
 except:
     raise NotImplementedError("Not implemented yet")
     # from fallback_py_funcs.py_make_dataset import make_dataset
 
 _make_dataset_iterative = make_dataset_iterative
 _make_dataset_endals = make_dataset_endals
+_calculate_pitch_endal = calculate_pitch_Endal
 f = float
 i = int
 b = bool
@@ -19,6 +20,12 @@ def make_dataset_iterative(initial_speed, length, amin=-30, amax=60, gravity=0.0
                                    i(max_steps), i(num_iterations), i(num_elements), b(check_impossible), b(lambertW),
                                    i(max_height_above), i(max_height_below), i(num_threads), b(verbose), i(max_distance),
                                    f(step), i(impossible_cutoff))
+
+
+def calculate_pitch_endal(cannon, target, initial_speed, length, amin=-30, amax=60, gravity=0.05, drag=0.99, mult_coeff=0.25,
+                          acceptable_error_range=0.01, starting_from_t=0, max_mult_depth=8, starting_multiplier=2,
+                          starting_max_depth=32):
+    return _calculate_pitch_endal(cannon, target, initial_speed, length, amin, amax, gravity, drag, mult_coeff, acceptable_error_range, starting_from_t, max_mult_depth, starting_multiplier, starting_max_depth )
 
 
 def make_dataset_endals(initial_speed, length, amin=-30, amax=60, gravity=0.05, drag=0.99, mult_coeff=0.25,

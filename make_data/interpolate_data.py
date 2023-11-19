@@ -68,7 +68,7 @@ def interpolate_line(line):
     return newline
 
 
-def transform_data(data, do_interpolate=True):
+def transform_data(data, do_interpolate=False):
     print("Collapsing data from threads")
     collapsed_data = []
     for thread_result in data:

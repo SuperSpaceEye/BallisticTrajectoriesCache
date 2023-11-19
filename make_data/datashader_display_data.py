@@ -46,11 +46,12 @@ print("Repacking data")
 for key in tqdm(data.keys()):
     line = data[key]
 
-    h_x_axis = np.append(h_x_axis, line[:, 0])
-    h_y_axis += [int(key)] * len(line)
+    filtered = line[line[:, 1] >= 0]
+    h_x_axis = np.append(h_x_axis, filtered[:, 0])
+    h_y_axis += [int(key)] * len(filtered)
 
-    h_pitch    = np.append(h_pitch, line[:, 2])
-    h_airtime  = np.append(h_airtime, line[:, 3])
+    h_pitch    = np.append(h_pitch, filtered[:, 2])
+    h_airtime  = np.append(h_airtime, filtered[:, 3])
 
 
 
@@ -95,25 +96,48 @@ l_figure_height = min(figure_height, h_y_range)
 # figure_width = x_range
 # figure_height = y_range
 
+aminx = min(min(h_x_axis), min(l_x_axis))
+aminy = min(min(h_y_axis), min(l_y_axis))
+amaxx = max(max(h_x_axis), max(l_x_axis))
+amaxy = max(max(h_y_axis), max(l_y_axis))
+
+
+min_pitch = min(min(h_pitch), min(l_pitch))
+max_pitch = max(max(h_pitch), max(l_pitch))
+
+min_airtime = min(min(h_airtime), min(l_airtime))
+max_airtime = max(max(h_airtime), max(l_airtime))
+
+h_x_axis = np.append(h_x_axis, [aminx, amaxx])
+h_y_axis = np.append(h_y_axis, [aminy, amaxy])
+h_pitch   = np.append(h_pitch, [min_pitch, max_pitch])
+h_airtime = np.append(h_airtime, [min_airtime, max_pitch])
+
+l_x_axis = np.append(l_x_axis, [aminx, amaxx])
+l_y_axis = np.append(l_y_axis, [aminy, amaxy])
+l_pitch   = np.append(l_pitch, [min_pitch, max_pitch])
+l_airtime = np.append(l_airtime, [min_airtime, max_pitch])
+
+
 print(f"Min y {min(h_y_axis)} Max y {max(h_y_axis)} Min x {min(h_x_axis)} Max x {max(h_x_axis)}")
 print(f"Min high pitch {min(h_pitch)} Max high pitch {max(h_pitch)} "
       f"| Min high airtime {min(h_airtime)} Max high airtime {max(h_airtime)}")
 print(f"Min low pitch {min(l_pitch)} Max low pitch {max(l_pitch)} "
       f"| Min low airtime {min(l_airtime)} Max low airtime {max(l_airtime)}")
 
-h_pitch_agg    = make_agg(make_df(h_x_axis, h_y_axis, h_pitch), h_figure_width, h_figure_height)
-h_airtime_agg  = make_agg(make_df(h_x_axis, h_y_axis, h_airtime), h_figure_width, h_figure_height)
+h_pitch_agg   = make_agg(make_df(h_x_axis, h_y_axis, h_pitch), h_figure_width, h_figure_height)
+h_airtime_agg = make_agg(make_df(h_x_axis, h_y_axis, h_airtime), h_figure_width, h_figure_height)
 
-l_pitch_agg    = make_agg(make_df(l_x_axis, l_y_axis, l_pitch), l_figure_width, l_figure_height)
-l_airtime_agg  = make_agg(make_df(l_x_axis, l_y_axis, l_airtime), l_figure_width, l_figure_height)
+l_pitch_agg   = make_agg(make_df(l_x_axis, l_y_axis, l_pitch), l_figure_width, l_figure_height)
+l_airtime_agg = make_agg(make_df(l_x_axis, l_y_axis, l_airtime), l_figure_width, l_figure_height)
 
 fig, ax = plt.subplots(2, 2, figsize=(15,10))
 
-ax[0, 0].title.set_text("high pitch")
-ax[0, 1].title.set_text("high airtime")
+ax[0, 0].title.set_text("first pitch")
+ax[0, 1].title.set_text("first airtime")
 
-ax[1, 0].title.set_text("low pitch")
-ax[1, 1].title.set_text("low airtime")
+ax[1, 0].title.set_text("second pitch")
+ax[1, 1].title.set_text("second airtime")
 
 
 sc1 = ax[0, 0].imshow(ds.tf.set_background(ds.tf.shade(h_pitch_agg, cmap=cc.bmy), "white").to_pil())
@@ -123,10 +147,10 @@ sc4 = ax[1, 1].imshow(ds.tf.set_background(ds.tf.shade(l_airtime_agg, cmap=cc.bm
 
 
 def make_x_labels(labels):
-    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(min_x, max_x, len(labels)-1)))
+    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(aminx, amaxx, len(labels)-1)))
 
 def make_y_labels(labels):
-    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(max_y, min_y, len(labels)-1)))
+    return [str(0)] + list(map(lambda x: str(int(x)), np.linspace(amaxy, aminy, len(labels)-1)))
 
 def make_labels_for_ax(ax):
     ax.set_xticklabels(make_x_labels(ax.get_xticklabels()))
